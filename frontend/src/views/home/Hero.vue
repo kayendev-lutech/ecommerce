@@ -7,7 +7,12 @@ import { RouterLink } from 'vue-router'
 <template>
     <main class="grid lg:grid-cols-2 place-items-center pt-16 pb-8 md:pt-12 md:pb-24">
         <div class="py-6 md:order-1 hidden md:block">
-            <img class="w-full" src="/images/hero.png" alt="Astronaut in the air" loading="eager" />
+            <img
+                class="w-full"
+                src="https://www.dior.com/on/demandware.static/-/Library-Sites-DiorSharedLibrary/default/dwee3de13f/images/beauty/0-HOME/BEAUTY/2025/06-JUNE/DIOR_FDAY25_GAMME%20SAUVAGE_2400x3000px%201.jpg"
+                alt="Astronaut in the air"
+                loading="eager"
+            />
         </div>
         <div>
             <h1

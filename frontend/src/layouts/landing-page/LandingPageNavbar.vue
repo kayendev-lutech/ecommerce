@@ -30,7 +30,7 @@ const auth = useAuthStore()
                             href="/#"
                             class="flex lg:px-3 py-2 items-center text-gray-600 hover:text-gray-900"
                         >
-                            <span> Binary</span>
+                            <span>Home</span>
                         </a>
                     </li>
                     <li>
@@ -38,7 +38,7 @@ const auth = useAuthStore()
                             to="/#"
                             class="flex lg:px-3 py-2 items-center text-gray-600 hover:text-gray-900"
                         >
-                            <span> Caesar</span>
+                            <span> Product</span>
                         </RouterLink>
                     </li>
                     <li>
@@ -46,7 +46,7 @@ const auth = useAuthStore()
                             to="/#"
                             class="flex lg:px-3 py-2 items-center text-gray-600 hover:text-gray-900"
                         >
-                            <span> Atbash</span>
+                            <span> Category</span>
                         </RouterLink>
                     </li>
                     <li>
@@ -54,7 +54,7 @@ const auth = useAuthStore()
                             href="#"
                             class="flex lg:px-3 py-2 items-center text-gray-600 hover:text-gray-900"
                         >
-                            <span> A1Z26</span>
+                            <span> Variant</span>
                         </a>
                     </li>
                     <li>
@@ -62,7 +62,7 @@ const auth = useAuthStore()
                             href="#"
                             class="flex lg:px-3 py-2 items-center text-gray-600 hover:text-gray-900"
                         >
-                            <span> Vigenère</span>
+                            <span> Contact</span>
                         </a>
                     </li>
                     <li>
@@ -70,7 +70,7 @@ const auth = useAuthStore()
                             href="#"
                             class="flex lg:px-3 py-2 items-center text-gray-600 hover:text-gray-900"
                         >
-                            <span> Bill Cipher</span>
+                            <span> About</span>
                             <span
                                 class="ml-1 px-2 py-0.5 text-[10px] animate-pulse font-semibold uppercase text-white bg-indigo-600 rounded-full"
                             >

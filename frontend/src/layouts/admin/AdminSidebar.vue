@@ -1,133 +1,99 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import LanguageChanger from '@/components/LanguageChanger.vue'
+import SidebarFooter from '@/components/sidebar/SidebarFooter.vue'
+import SidebarHeader from '@/components/sidebar/SidebarHeader.vue'
+import SidebarNav from '@/components/sidebar/SidebarNav.vue'
+import CustomModal from '@/components/ui/CustomModal.vue'
 import router, { RoutePath } from '@/router'
 import { useAuthStore } from '@/stores/auth'
-import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue'
-import { Icon } from '@iconify/vue'
-import { Button, Menu, MenuItem, Modal, SubMenu } from 'ant-design-vue'
-import type { SelectInfo } from 'ant-design-vue/es/menu/src/interface'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
 const { t } = useI18n()
 
-// selected if current route name is equal to key or parent route path is equal to key
 const selectedKeys = ref<string[]>([
-    router.currentRoute.value.name as string,
-    ...router.currentRoute.value.matched.map((route) => route.path as string)
+    router.currentRoute.value.path, // Use path for consistent selection
+    ...router.currentRoute.value.matched.map((route) => route.path)
 ])
+
 const collapsed = ref<boolean>(false)
+const showLogoutModal = ref<boolean>(false)
+
 const handleCollapse = () => {
     collapsed.value = !collapsed.value
 }
 
-const handleSelect = (event: SelectInfo) => {
+const handleSelect = (event: { key: string }) => {
     if (!event.key) return
-
     router.push(String(event.key))
 }
 
-const handleLogout = () => {
-    Modal.confirm({
-        title: t('admin.sidebar.logout.prompt'),
-        centered: true,
-        okText: t('admin.sidebar.logout.ok'),
-        cancelText: t('admin.sidebar.logout.cancel'),
-        onOk: async () => {
-            await auth.logout()
-            window.location.replace('/')
-        }
-    })
+const confirmLogout = () => {
+    showLogoutModal.value = true
 }
+
+const handleLogout = async () => {
+    await auth.logout()
+    window.location.replace('/')
+}
+
+const handleGoHome = () => {
+    router.push(RoutePath.Home)
+}
+
+// Watch for route changes to update selectedKeys
+watch(
+    () => router.currentRoute.value.path,
+    (newPath) => {
+        selectedKeys.value = [
+            newPath,
+            ...router.currentRoute.value.matched.map((route) => route.path)
+        ]
+    },
+    { immediate: true }
+)
 </script>
+
 <template>
-    <!-- ! MENU ITEM KEY MUST BE PATH -->
-    <div class="gap-4 flex flex-col bg-white z-[666] border-r drop-shadow">
-        <Button type="primary" block class="mb-4 rounded-none" @click="handleCollapse">
-            <template #icon>
-                <MenuUnfoldOutlined v-if="collapsed" />
-                <MenuFoldOutlined v-else />
-            </template>
-        </Button>
-        <div class="pl-6 mb-6">
-            <LanguageChanger class-name="w-48" />
-        </div>
-
+    <div
+        class="luxury-green-sidebar flex h-screen flex-col border-r-2 border-emerald-100 bg-gradient-to-b from-white to-emerald-50 shadow-lg shadow-emerald-200/20 transition-all duration-300 ease-in-out"
+        :class="{ 'w-16': collapsed, 'w-64': !collapsed }"
+    >
         <div
-            class="flex flex-col gap-3 mb-12"
-            :class="{ 'pl-6': !collapsed, 'items-center': collapsed }"
-        >
-            <div
-                class="avatar aspect-square overflow-hidden rounded-lg"
-                :class="{ 'w-24': !collapsed, 'w-12': collapsed }"
-            >
-                <img
-                    src="/images/admin-avatar-example.jpg"
-                    class="w-full h-full object-cover"
-                    alt="#"
-                />
-            </div>
-            <div v-if="!collapsed">
-                <div class="font-bold text-lg">Admin</div>
-                <div class="text-gray-500">admin@example.tech</div>
-            </div>
-        </div>
-        <Menu
-            :style="{ width: collapsed ? '64px' : '256px' }"
-            id="admin-side-menu"
-            @select="handleSelect"
-            v-model:selectedKeys="selectedKeys"
-            theme="light"
-            mode="inline"
-            :inline-collapsed="collapsed"
-        >
-            <SubMenu key="tab1">
-                <template #icon><Icon icon="ph:tag-duotone" /></template>
-                <template #title>Tab 1</template>
-                <MenuItem :key="RoutePath.AdminTab1Sub1"> Tab1.1 </MenuItem>
-                <MenuItem :key="RoutePath.AdminTab1Sub2"> Tab1.2 </MenuItem>
-            </SubMenu>
-            <MenuItem :key="RoutePath.AdminTab2">
-                <template #icon>
-                    <Icon icon="ph:package-bold" />
-                </template>
-                Tab 2
-            </MenuItem>
-            <MenuItem :key="RoutePath.AdminTab3">
-                <template #icon>
-                    <Icon icon="ph:user-bold" />
-                </template>
-                Tab 3
-            </MenuItem>
-        </Menu>
+            class="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-400"
+        ></div>
 
-        <Menu
-            :style="{
-                width: collapsed ? '64px' : '256px',
-                marginTop: 'auto',
-                marginBottom: '2rem'
-            }"
-            id="admin-side-logout"
-            mode="inline"
-            theme="light"
-            :inline-collapsed="collapsed"
-            :selected-keys="[]"
-        >
-            <MenuItem key="home" @click="$router.push(RoutePath.Home)">
-                <template #icon> <Icon icon="ph:house" /> </template>
-                {{ $t('admin.sidebar.back_home.title') }}
-            </MenuItem>
-            <MenuItem key="logout" @click="handleLogout">
-                <template #icon> <Icon icon="ph:sign-out" /> </template>
-                {{ $t('admin.sidebar.logout.title') }}
-            </MenuItem>
-        </Menu>
+        <SidebarHeader :is-collapsed="collapsed" @toggle-collapse="handleCollapse" />
+
+        <div v-if="!collapsed" class="border-b border-emerald-100 p-5">
+            <LanguageChanger
+                class-name="w-full rounded-xl border-2 border-emerald-100 bg-white shadow-sm hover:border-emerald-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+            />
+        </div>
+
+        <SidebarNav
+            :is-collapsed="collapsed"
+            :selected-keys="selectedKeys"
+            @select="handleSelect"
+        />
+
+        <SidebarFooter :is-collapsed="collapsed" @go-home="handleGoHome" @logout="confirmLogout" />
+
+        <CustomModal
+            :show="showLogoutModal"
+            :title="t('admin.sidebar.logout.prompt')"
+            :message="t('admin.sidebar.logout.confirm_message')"
+            :ok-text="t('admin.sidebar.logout.ok')"
+            :cancel-text="t('admin.sidebar.logout.cancel')"
+            centered
+            @confirm="handleLogout"
+            @cancel="showLogoutModal = false"
+            @update:show="showLogoutModal = $event"
+        />
     </div>
 </template>
 
-<style lang="less" scoped>
-* {
-    transition: all ease 0.2s !important;
-}
+<style scoped>
+/* No additional scoped styles needed, Tailwind handles most of it */
 </style>

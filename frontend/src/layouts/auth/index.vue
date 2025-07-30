@@ -37,7 +37,7 @@ setTimeout(() => {
     </div>
 </template>
 
-<style lang="less" scoped>
+<style scoped>
 .__auth-layout__ {
     @apply flex w-screen h-screen justify-center;
 }

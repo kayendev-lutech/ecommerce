@@ -18,7 +18,7 @@ export async function apiLogin(payload: LoginRequest) {
 
 export async function apiLogout() {
     // TODO: Please uncomment the line below
-    // await $post('/auth/logout/')
+    await $post('/auth/logout/')
 }
 
 export async function apiRegister(payload: RegisterRequest) {

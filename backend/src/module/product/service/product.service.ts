@@ -78,4 +78,13 @@ export class ProductService {
       throw new InternalServerErrorException(error?.message || 'Failed to delete product');
     }
   }
+  async uploadImage(id: string, imageUrl: string) {
+    try {
+      // Cập nhật trường image_url cho product
+      const updated = await this.update(id, { image_url: imageUrl });
+      return updated;
+    } catch (error: any) {
+      throw new InternalServerErrorException(error?.message || 'Failed to upload product image');
+    }
+  }
 }

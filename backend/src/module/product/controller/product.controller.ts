@@ -81,4 +81,24 @@ export class ProductController {
       throw new InternalServerErrorException(error?.message || 'Failed to delete product');
     }
   }
+  async uploadImage({ params, body }: WrappedRequest) {
+    // image_url sẽ được lấy từ req.file.path (multer + cloudinary)
+    // body không có image, file nằm ở req.file
+    // params.id là product id
+    // @ts-expect-error: body may contain fileUrl or imageUrl properties not defined in its type
+    const imageUrl = body?.fileUrl || body?.imageUrl; // fallback nếu test
+    if (!imageUrl && !body?.file && !body?.image && !body?.fileUrl && !body?.imageUrl) {
+      throw new Error('No image uploaded');
+    }
+    // Nếu dùng multer, imageUrl sẽ là req.file.path
+    // Nhưng wrappedRequest không truyền req.file, nên cần truyền qua route handler
+    // => Xử lý ở route, truyền imageUrl vào body
+    // Gọi service để update image_url cho product
+    const updated = await this.productService.uploadImage(params.id, { image_url: imageUrl });
+    return {
+      status: 200,
+      data: updated,
+      message: 'Image uploaded',
+    };
+  }
 }

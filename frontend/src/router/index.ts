@@ -15,9 +15,15 @@ export enum RoutePath {
     Login = RoutePrefix.Auth + '/login',
     Register = RoutePrefix.Auth + '/register',
     /*******/
-    AdminTab1Sub1 = RoutePrefix.Admin + '/tab1/sub1',
-    AdminTab1Sub2 = RoutePrefix.Admin + '/tab1/sub2',
-    AdminTab2 = RoutePrefix.Admin + '/tab2',
+    AdminProductSub = RoutePrefix.Admin + '/product',
+    AdminProductSub1 = RoutePrefix.Admin + '/product/sub1',
+    AdminProductSub2 = RoutePrefix.Admin + '/product/sub2',
+
+    AdminCategorySub = RoutePrefix.Admin + '/category',
+    AdminCategorySub1 = RoutePrefix.Admin + '/category/sub1',
+    AdminCategorySub2 = RoutePrefix.Admin + '/category/sub2',
+
+    Admincategory = RoutePrefix.Admin + '/category',
     AdminTab3 = RoutePrefix.Admin + '/tab3'
 }
 
@@ -90,51 +96,69 @@ const router = createRouter({
             meta: {
                 layout: 'admin'
             },
-            redirect: RoutePath.AdminTab1Sub1,
+            redirect: RoutePath.AdminProductSub,
             children: [
                 {
-                    path: RoutePath.AdminTab1Sub1,
-                    name: 'AdminTab1Sub1',
-                    component: () => import('../views/admin/tab1/sub1/index.vue'),
+                    path: RoutePath.AdminProductSub,
+                    name: 'AdminTabSub',
+                    component: () => import('../views/admin/product/index.vue'),
                     meta: {
-                        title: 'Tab 1 Sub 1'
+                        title: 'Product'
                     }
                 },
                 {
-                    path: RoutePath.AdminTab1Sub2,
-                    name: 'AdminTab1Sub2',
-                    component: () => import('../views/admin/tab1/sub2/index.vue'),
+                    path: RoutePath.AdminProductSub1,
+                    name: 'AdminProductSub1',
+                    component: () => import('../views/admin/product/sub1/index.vue'),
                     meta: {
-                        title: 'Tab 1 Sub 2'
+                        title: 'Add Product'
                     }
                 },
                 {
-                    path: RoutePath.AdminTab2,
-                    name: 'AdminTab2',
-                    component: () => import('../views/admin/tab2/index.vue'),
+                    path: `${RoutePath.AdminProductSub2}/:id`,
+                    name: 'AdminProductSub2',
+                    component: () => import('../views/admin/product/sub2/index.vue'),
+                    meta: { title: 'Edit Product' }
+                },
+                {
+                    path: RoutePath.AdminCategorySub,
+                    name: 'AdminTabSub2',
+                    component: () => import('../views/admin/category/index.vue'),
                     meta: {
-                        title: 'Tab 2'
+                        title: 'Category'
                     }
                 },
                 {
-                    path: RoutePath.AdminTab3,
-                    name: 'AdminTab3',
-                    component: () => import('../views/admin/tab3/index.vue'),
+                    path: RoutePath.AdminCategorySub1,
+                    name: 'AdmincategorySub1',
+                    component: () => import('../views/admin/category/sub1/index.vue'),
                     meta: {
-                        title: 'Tab 3'
+                        title: 'Add Category'
                     }
+                },
+                {
+                    path: `${RoutePath.AdminCategorySub2}/:id`,
+                    name: 'AdmincategorySub2Edit',
+                    component: () => import('../views/admin/category/sub2/index.vue'),
+                    meta: { title: 'Edit Category' }
                 }
+                // {
+                //     path: RoutePath.AdmincategorySub2,
+                //     name: 'AdmincategorySub2',
+                //     component: () => import('../views/admin/category/sub2/index.vue'),
+                //     meta: {
+                //         title: 'Edit Category'
+                //     }
+                // }
             ]
         }
     ]
 })
 
 router.beforeEach(async (to) => {
-    // redirect to login page if not logged in and trying to access a restricted page
     console.info(':::Router -> Enter', to.path)
-    const existingPages = router.getRoutes().map((route) => route.path)
 
-    if (!existingPages.includes(to.path)) {
+    if (router.resolve(to).matched.length === 0) {
         console.info(`:::Router -> '${to.path}' not found, redirect to 404 page`)
         return RoutePath.NotFound
     }
