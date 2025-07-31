@@ -43,4 +43,8 @@ export class CategoryService {
       throw new AppError(ErrorCode.NOT_FOUND, 404, 'Category not found');
     }
   }
+  async updateCategoryImage(id: string, imageUrl: string) {
+    await this.getByIdOrFail(id);
+    return await this.categoryRepository.updateCategory(id, { thumbnail: imageUrl });
+  }
 }

@@ -1,6 +1,7 @@
 import { WrapperClass } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { CategoryController } from './controller/category.controller';
+import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
 
 const router = Router();
 const wrappedCategoryController = new WrapperClass(
@@ -122,5 +123,37 @@ router.put('/:id', wrappedCategoryController.update);
  *         description: Danh mục đã được xóa
  */
 router.delete('/:id', wrappedCategoryController.delete);
-
+/**
+ * @swagger
+ * /category/{id}/upload-image:
+ *   post:
+ *     summary: Upload ảnh thumbnail cho danh mục lên Cloudinary
+ *     tags:
+ *       - Category
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID danh mục
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Ảnh đã được upload thành công
+ */
+router.post(
+  '/:id/upload-image',
+  uploadProductImage.single('image'),
+  wrappedCategoryController.uploadImage,
+);
 export default router;

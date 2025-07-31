@@ -9,7 +9,6 @@ const router = Router();
 const wrappedLoginController = new WrapperClass(
   new AuthController(),
 ) as unknown as AuthController & { [key: string]: any };
-
 /**
  * @swagger
  * /auth/login:

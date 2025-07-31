@@ -6,7 +6,7 @@ export async function apiGetProducts(params?: Record<string, any>) {
 }
 
 export async function apiCreateProduct(payload: any) {
-    return $post(`${PRODUCT_ENDPOINT}`, payload).then((resp) => resp.data)
+    return $post(PRODUCT_ENDPOINT, payload).then((resp) => resp.data)
 }
 
 export async function apiGetProduct(id: string | number) {
@@ -19,4 +19,11 @@ export async function apiUpdateProduct(id: string | number, payload: any) {
 
 export async function apiDeleteProduct(id: string | number) {
     return $delete(`${PRODUCT_ENDPOINT}/${id}`).then((resp) => resp.data)
+}
+export async function apiUploadProductImage(id: string | number, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return $post(`${PRODUCT_ENDPOINT}/${id}/upload-image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }).then((resp) => resp.data)
 }

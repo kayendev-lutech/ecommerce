@@ -26,9 +26,12 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
 app.use(helmet(helmetOptions));
 app.use(cors(corsOptions));
-
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+app.use('/api/v1/product', productRoute);
+
+app.use('/api/v1/category', categoryRoute);
 
 app.use(generateDeviceIdMiddleware());
 app.use(apiWatcher);
@@ -39,8 +42,6 @@ app.get('/', (_req, res) => res.send('Welcome to the Express TypeScript App!'));
 app.use('/api/v1/auth', authLimiter, authRoute);
 app.use('/api/v1/user', userRoute);
 app.use('/api/v1/variant', variantRoute);
-app.use('/api/v1/product', productRoute);
-app.use('/api/v1/category', categoryRoute);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(notFoundHandler);

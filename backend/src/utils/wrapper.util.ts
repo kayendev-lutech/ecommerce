@@ -8,6 +8,8 @@ export interface WrappedRequest<B = any, H = any, P = any, Q = any, U = any, K =
   query: Q;
   user: U;
   deviceId: K;
+  file?: Express.Multer.File;
+  files?: Express.Multer.File[];
 }
 
 type ControllerMethod<B = any, H = any, P = any, Q = any> = (
@@ -39,9 +41,10 @@ export class WrapperClass<T extends Record<string, any>> {
                 query: req.query,
                 user: req.user,
                 deviceId: req.deviceId,
+                file: req.file,
+                files: req.files as Express.Multer.File[],
               };
 
-              // Call the bound method with the wrapped request
               const result = await (boundMethod as unknown as ControllerMethod)(wrappedRequest);
 
               handleSuccess(res, result);
@@ -50,9 +53,8 @@ export class WrapperClass<T extends Record<string, any>> {
             }
           };
         }
-        // If not a function, return the property
         return originalMethod;
       },
-    }) as unknown as WrapperClass<T> & T; // Extend the type to include WrapperClass
+    }) as unknown as WrapperClass<T> & T;
   }
 }

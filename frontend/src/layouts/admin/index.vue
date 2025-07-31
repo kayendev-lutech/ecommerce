@@ -28,7 +28,7 @@ watch(canAccess, (value) => {
     <div class="__admin-layout__ flex h-screen overflow-hidden">
         <AdminSidebar />
         <div class="flex-1 min-h-screen p-4 overflow-y-scroll relative">
-            <div class="w-full h-full bg-white border p-4 rounded-lg flex flex-col drop-shadow">
+            <div class="w-full h-full bg-background p-4 rounded-lg flex flex-col drop-shadow">
                 <span class="title font-bold text-2xl">
                     {{ $route.meta.title }}
                 </span>

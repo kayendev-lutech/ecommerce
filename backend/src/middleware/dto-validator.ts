@@ -5,7 +5,14 @@ import { Request, Response, NextFunction } from 'express';
 
 export function validateRequest<T>(dtoClass: any, source: 'body' | 'query' | 'params' = 'body') {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const dtoObj = plainToInstance(dtoClass, req[source]);
+    if (!req[source]) {
+      return handleError(res, [`${source} is required`]);
+    }
+
+    const dtoObj = plainToInstance(dtoClass, req[source], {
+      enableImplicitConversion: true,
+    });
+
     const errors: ValidationError[] = await validate(dtoObj);
 
     if (errors.length > 0) {
@@ -17,3 +24,4 @@ export function validateRequest<T>(dtoClass: any, source: 'body' | 'query' | 'pa
     }
   };
 }
+

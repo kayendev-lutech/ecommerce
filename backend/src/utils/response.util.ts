@@ -3,6 +3,7 @@ import { Response } from 'express';
 interface SuccessResponse<T = any> {
   status?: number;
   data?: T;
+  pagination?: any;
   message?: string;
 }
 
@@ -16,27 +17,25 @@ interface ErrorResponse {
 }
 
 function handleSuccess<T>(res: Response, result: SuccessResponse<T> | T) {
-  let responseData: { success: boolean; message: string; data?: T };
+  let responseData: SuccessResponse<T> ;
   const defaultMessage = 'Operation successful';
 
-  if (typeof result === 'object' && result !== null && (result as any)?.status) {
-    const { status = 200, data, message = defaultMessage } = result as SuccessResponse<T>;
+   
+  if (typeof result === 'object' && result !== null && (result as SuccessResponse<T>)?.status) {
+    const { status = 200, data, message = defaultMessage, pagination } = result as SuccessResponse<T>;
 
-    responseData = {
-      success: true,
-      message,
-      ...(data !== undefined ? { data } : {}),
-    };
+    responseData = result;
 
     res.status(status).json(responseData);
   } else {
     responseData = {
-      success: true,
+      status: 200,
       message: defaultMessage,
-      data: result as T,
+      data: (result as any)?.data as unknown as T,
+      pagination: (result as any)?.pagination
     };
 
-    res.status(200).json(responseData);
+    res.status(responseData?.status || 200).json({success: true,...responseData});
   }
 }
 

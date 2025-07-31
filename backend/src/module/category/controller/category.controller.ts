@@ -45,4 +45,19 @@ export class CategoryController {
       message: 'Category created',
     };
   }
+  async uploadImage({ params, file }: FileUploadRequest) {
+    if (!file) {
+      throw new Error('No image file uploaded.');
+    }
+    const imageUrl = file?.url || file?.path;
+    if (!imageUrl) {
+      throw new Error('No image file uploaded or upload failed.');
+    }
+    const updatedCategory = await this.categoryService.updateCategoryImage(params.id, imageUrl);
+    return {
+      status: 200,
+      data: updatedCategory,
+      message: 'Image uploaded successfully',
+    };
+  }
 }

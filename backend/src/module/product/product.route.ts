@@ -5,6 +5,7 @@ import { ProductController } from '@module/product/controller/product.controller
 import { validateRequest } from '@middlewares/dto-validator';
 import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { IdParamDto } from './dto/id-param.dto';
 const router = Router();
 const wrappedProductController = new WrapperClass(
@@ -112,7 +113,12 @@ router.post('/', wrappedProductController.create);
  *       200:
  *         description: Sản phẩm đã được cập nhật
  */
-router.put('/:id', wrappedProductController.update);
+router.put(
+  '/:id',
+  validateRequest(IdParamDto, 'params'),
+  validateRequest(UpdateProductDto, 'body'),
+  wrappedProductController.update,
+);
 /**
  * @swagger
  * /product/{id}:
@@ -160,15 +166,10 @@ router.delete('/:id', wrappedProductController.delete);
  *       200:
  *         description: Ảnh đã được upload thành công
  */
-router.post('/:id/upload-image', uploadProductImage.single('image'), async (req, res, next) => {
-  try {
-    // req.file.path là url cloudinary
-    // Truyền imageUrl vào body để controller xử lý
-    req.body.fileUrl = (req.file as any)?.path;
-    // Gọi controller uploadImage
-    await wrappedProductController.uploadImage(req, res, next);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post(
+  '/:id/upload-image',
+  validateRequest(IdParamDto, 'params'),
+  uploadProductImage.single('image'),
+  wrappedProductController.uploadImage,
+);
 export default router;
