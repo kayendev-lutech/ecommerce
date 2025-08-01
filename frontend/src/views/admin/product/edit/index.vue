@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { Bold, CloudUpload, Image, Italic, Link, List, Plus, Underline } from 'lucide-vue-next'
-import { ref } from 'vue'
-
-// Import shadcn/ui components
-import { Button } from '@/components/ui/button'
+import { apiGetProduct, apiUpdateProduct, apiUploadProductImage } from '@/api/product/product.api'
+import { ActionButtons, Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,19 +14,31 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { Bold, CloudUpload, Italic, Link, List, Plus, Underline } from 'lucide-vue-next'
+import { onMounted, ref } from 'vue'
+// import { toast } from 'vue-sonner'
+import { useToast } from '@/components/ui/toast/use-toast'
+import router, { RoutePath } from '@/router'
+import { useRoute } from 'vue-router'
+import * as z from 'zod'
+const route = useRoute()
+const productId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 
-// Reactive data
-const activeTab = ref('general')
+const { toast } = useToast()
 const productName = ref('')
 const description = ref('')
+const basePrice = ref('')
+const mediaUrl = ref('')
+const activeTab = ref('general')
 const status = ref('published')
 const category = ref('')
-const basePrice = ref('')
 const discountType = ref('no-discount')
 const discountValue = ref('')
 const taxClass = ref('')
 const vatAmount = ref('')
 const template = ref('default')
+const currencyCode = ref('')
+const discountPrice = ref('')
 
 const statusOptions = [
     { value: 'published', label: 'Published', color: 'green' },
@@ -49,20 +58,99 @@ const templateOptions = [
     { value: 'minimal', label: 'Minimal template' },
     { value: 'detailed', label: 'Detailed template' }
 ]
+const productSchema = z.object({
+    name: z.string().min(1, 'Product name is required'),
+    price: z.preprocess(
+        (val) => (val === '' ? undefined : Number(val)),
+        z.number({ invalid_type_error: 'Price must be a number' }).min(0.01, 'Price is required')
+    ),
+    currency_code: z.string().min(1, 'Currency code is required'),
+    description: z.string().optional(),
+    discount_price: z.preprocess(
+        (val) => (val === '' ? undefined : Number(val)),
+        z.number().optional()
+    ),
+    image_url: z.string().optional()
+})
+const handleSave = async () => {
+    const result = productSchema.safeParse({
+        name: productName.value,
+        price: basePrice.value,
+        currency_code: currencyCode.value,
+        description: description.value,
+        discount_price: discountPrice.value,
+        image_url: mediaUrl.value
+    })
+    if (!result.success) {
+        toast({
+            title: 'Validation Error',
+            description: result.error.errors.map((e) => e.message).join(', '),
+            variant: 'destructive'
+        })
+        return
+    }
 
-const handleSave = () => {
-    console.log('Saving product...')
+    const { price, discount_price, ...rest } = result.data
+
+    const payload = {
+        ...rest,
+        ...(price !== undefined && { price: String(price) }),
+        ...(discount_price !== undefined && { discount_price: String(discount_price) })
+    }
+
+    try {
+        await apiUpdateProduct(productId, payload)
+        toast({
+            title: 'Success',
+            description: 'Product updated successfully!',
+            variant: 'destructive'
+        })
+        router.push(RoutePath.AdminProductSub)
+    } catch (error) {
+        // --- FIXED CATCH BLOCK ---
+        let errorMessage = 'An unexpected error occurred. Please try again.' // Default message
+
+        toast({
+            title: 'Error',
+            description: errorMessage,
+            variant: 'destructive'
+        })
+        // --- END OF FIX ---
+    }
 }
 
 const handleCancel = () => {
-    console.log('Navigating back...')
-    // router.push(RoutePath.AdminProductSub)
+    router.push(RoutePath.AdminProductSub)
 }
 
-const handleFileUpload = (event: Event) => {
+const handleFileUpload = async (event: Event) => {
     const target = event.target as HTMLInputElement
-    if (target.files && target.files[0]) {
-        console.log('File uploaded:', target.files[0])
+    if (!target.files || target.files.length === 0) {
+        toast({
+            title: 'Vui lòng chọn ảnh để upload!',
+            description: 'Bạn chưa chọn file ảnh.',
+            variant: 'destructive',
+            class: 'bg-yellow-50 text-yellow-900 border-yellow-300'
+        })
+        return
+    }
+    const file = target.files[0]
+    try {
+        const resp = await apiUploadProductImage(productId, file)
+        mediaUrl.value = resp.image_url
+        toast({
+            title: 'Upload thành công!',
+            description: 'Ảnh sản phẩm đã được cập nhật.',
+            variant: 'default',
+            class: 'bg-emerald-50 text-emerald-900 border-emerald-300'
+        })
+    } catch (error) {
+        toast({
+            title: 'Upload thất bại!',
+            description: 'Không thể upload ảnh. Vui lòng thử lại.',
+            variant: 'destructive',
+            class: 'bg-red-50 text-red-900 border-red-300'
+        })
     }
 }
 
@@ -78,56 +166,26 @@ const getStatusColor = (statusValue: string) => {
             return 'bg-gray-500'
     }
 }
+onMounted(async () => {
+    if (productId) {
+        const resp = await apiGetProduct(productId)
+        const product = resp.data
+        productName.value = product.name || ''
+        description.value = product.description || ''
+        basePrice.value = product.price || ''
+        mediaUrl.value = product.image_url || ''
+        currencyCode.value = product.currency_code || ''
+        discountPrice.value = product.discount_price || ''
+    }
+})
 </script>
 
 <template>
     <div class="flex flex-col lg:flex-row gap-6 p-6 bg-slate-50 min-h-screen w-full">
         <!-- Left Sidebar -->
         <div class="w-full lg:w-80 flex flex-col gap-5 flex-shrink-0">
-            <!-- Thumbnail Section -->
-            <Card>
-                <CardHeader>
-                    <CardTitle class="text-base">Thumbnail</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div
-                        class="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center bg-slate-50 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
-                    >
-                        <Image class="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Set the product thumbnail image. Only *.png, *.jpg and *.jpeg image
-                            files are accepted
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-
             <!-- Status Section -->
-            <Card>
-                <CardHeader>
-                    <CardTitle class="text-base">Status</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-3">
-                    <div class="flex items-center gap-2">
-                        <div :class="['w-2 h-2 rounded-full', getStatusColor(status)]"></div>
-                        <Select v-model="status">
-                            <SelectTrigger class="flex-1">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="option in statusOptions"
-                                    :key="option.value"
-                                    :value="option.value"
-                                >
-                                    {{ option.label }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <p class="text-xs text-muted-foreground">Set the product status.</p>
-                </CardContent>
-            </Card>
+            <ProductStatusForm v-model="status" :options="statusOptions" />
 
             <!-- Product Details Section -->
             <Card>
@@ -258,33 +316,33 @@ const getStatusColor = (statusValue: string) => {
                                     :rows="6"
                                     class="border-0 rounded-none resize-none focus-visible:ring-0"
                                 />
+                                <!-- Media -->
+                                <div class="space-y-2">
+                                    <Label class="text-sm font-medium">Media</Label>
+                                    <div
+                                        class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-16 text-center bg-muted/50 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer relative"
+                                    >
+                                        <CloudUpload class="w-10 h-10 text-primary mx-auto mb-4" />
+                                        <p class="text-sm text-muted-foreground">
+                                            <strong>Drop files here or click to upload.</strong
+                                            ><br />
+                                            Upload up to 10 files
+                                        </p>
+                                        <input
+                                            type="file"
+                                            @change="handleFileUpload"
+                                            class="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                        <div v-if="mediaUrl" class="mt-4 flex justify-center">
+                                            <img
+                                                :src="mediaUrl"
+                                                alt="Product Image"
+                                                class="max-h-40 rounded shadow"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <p class="text-xs text-muted-foreground">
-                                Set a description to the product for better visibility.
-                            </p>
-                        </div>
-
-                        <!-- Media -->
-                        <div class="space-y-2">
-                            <Label class="text-sm font-medium">Media</Label>
-                            <div
-                                class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-16 text-center bg-muted/50 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer relative"
-                            >
-                                <CloudUpload class="w-10 h-10 text-primary mx-auto mb-4" />
-                                <p class="text-sm text-muted-foreground">
-                                    <strong>Drop files here or click to upload.</strong><br />
-                                    Upload up to 10 files
-                                </p>
-                                <input
-                                    type="file"
-                                    @change="handleFileUpload"
-                                    multiple
-                                    class="absolute inset-0 opacity-0 cursor-pointer"
-                                />
-                            </div>
-                            <p class="text-xs text-muted-foreground">
-                                Set the product media gallery.
-                            </p>
                         </div>
 
                         <!-- Pricing -->
@@ -339,31 +397,22 @@ const getStatusColor = (statusValue: string) => {
                                             discountType === 'percentage' ? 'percentage' : 'amount'
                                         }}.
                                     </p>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium">Tax Class</Label>
-                                        <Select v-model="taxClass">
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select tax class" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="standard">Standard</SelectItem>
-                                                <SelectItem value="reduced">Reduced</SelectItem>
-                                                <SelectItem value="zero">Zero Rate</SelectItem>
-                                                <SelectItem value="exempt">Exempt</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                    <div v-if="discountType === 'fixed'" class="space-y-2">
+                                        <Label class="text-sm font-medium">Discount Price</Label>
+                                        <Input
+                                            v-model="discountPrice"
+                                            placeholder="Discount price"
+                                        />
                                         <p class="text-xs text-muted-foreground">
-                                            Set the product tax class.
+                                            Discounted price for the product.
                                         </p>
-                                    </div>
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium">VAT Amount (%)</Label>
-                                        <Input v-model="vatAmount" placeholder="VAT amount" />
+                                        <Label class="text-sm font-medium">Currency Code</Label>
+                                        <Input
+                                            v-model="currencyCode"
+                                            placeholder="Currency code (e.g. VND, USD)"
+                                        />
                                         <p class="text-xs text-muted-foreground">
-                                            Set the product VAT amount.
+                                            Currency for product price.
                                         </p>
                                     </div>
                                 </div>
@@ -469,10 +518,12 @@ const getStatusColor = (statusValue: string) => {
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex justify-end gap-3 p-6 border-t bg-muted/50">
-                    <Button variant="outline" @click="handleCancel"> Cancel </Button>
-                    <Button @click="handleSave"> Save Changes </Button>
-                </div>
+                <ActionButtons
+                    :onCancel="handleCancel"
+                    :onSave="handleSave"
+                    cancelText="Cancel"
+                    saveText="Save Changes"
+                />
             </Tabs>
         </Card>
     </div>

@@ -15,13 +15,13 @@ export enum RoutePath {
     Login = RoutePrefix.Auth + '/login',
     Register = RoutePrefix.Auth + '/register',
     /*******/
-    AdminProductSub = RoutePrefix.Admin + '/product',
-    AdminProductSub1 = RoutePrefix.Admin + '/product/sub1',
-    AdminProductSub2 = RoutePrefix.Admin + '/product/sub2',
+    AdminProductSub     = RoutePrefix.Admin + '/product',
+    AdminProductCreate  = RoutePrefix.Admin + '/product/create',
+    AdminProductEdit    = RoutePrefix.Admin + '/product/edit',
 
-    AdminCategorySub = RoutePrefix.Admin + '/category',
-    AdminCategorySub1 = RoutePrefix.Admin + '/category/sub1',
-    AdminCategorySub2 = RoutePrefix.Admin + '/category/sub2',
+    AdminCategorySub    = RoutePrefix.Admin + '/category',
+    AdminCategoryCreate = RoutePrefix.Admin + '/category/create',
+    AdminCategoryEdit   = RoutePrefix.Admin + '/category/edit',
 
     Admincategory = RoutePrefix.Admin + '/category',
     AdminTab3 = RoutePrefix.Admin + '/tab3'
@@ -107,39 +107,39 @@ const router = createRouter({
                     }
                 },
                 {
-                    path: RoutePath.AdminProductSub1,
-                    name: 'AdminProductSub1',
-                    component: () => import('../views/admin/product/sub1/index.vue'),
+                    path: RoutePath.AdminProductCreate,
+                    name: 'AdminProductCreate',
+                    component: () => import('../views/admin/product/create/index.vue'),
                     meta: {
                         title: 'Add Product'
                     }
                 },
                 {
-                    path: `${RoutePath.AdminProductSub2}/:id`,
-                    name: 'AdminProductSub2',
-                    component: () => import('../views/admin/product/sub2/index.vue'),
+                    path: `${RoutePath.AdminProductEdit}/:id`,
+                    name: 'AdminProductEdit',
+                    component: () => import('../views/admin/product/edit/index.vue'),
                     meta: { title: 'Edit Product' }
                 },
                 {
                     path: RoutePath.AdminCategorySub,
-                    name: 'AdminTabSub2',
+                    name: 'AdminCategorySub',
                     component: () => import('../views/admin/category/index.vue'),
                     meta: {
                         title: 'Category'
                     }
                 },
                 {
-                    path: RoutePath.AdminCategorySub1,
-                    name: 'AdmincategorySub1',
-                    component: () => import('../views/admin/category/sub1/index.vue'),
+                    path: RoutePath.AdminCategoryCreate,
+                    name: 'AdminCategoryCreate',
+                    component: () => import('../views/admin/category/create/index.vue'),
                     meta: {
                         title: 'Add Category'
                     }
                 },
                 {
-                    path: `${RoutePath.AdminCategorySub2}/:id`,
-                    name: 'AdmincategorySub2Edit',
-                    component: () => import('../views/admin/category/sub2/index.vue'),
+                    path: `${RoutePath.AdminCategoryEdit}/:id`,
+                    name: 'AdminCategoryEdit',
+                    component: () => import('../views/admin/category/edit/index.vue'),
                     meta: { title: 'Edit Category' }
                 }
                 // {

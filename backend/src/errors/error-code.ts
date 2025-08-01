@@ -1,3 +1,7 @@
+/**
+ * ErrorCode enum defines standardized error codes for the application.
+ * Each code maps to a specific error scenario.
+ */
 export enum ErrorCode {
   VALIDATION = 'ERR_001',
   DATABASE = 'ERR_002',
@@ -11,7 +15,10 @@ export enum ErrorCode {
   TOKEN_EXPIRED = 'ERR_010',
   PERMISSION_DENIED = 'ERR_011',
 }
-
+/**
+ * ErrorDetails maps each ErrorCode to a human-readable message.
+ * Used for consistent error responses throughout the application.
+ */
 export const ErrorDetails: Record<ErrorCode, { message: string }> = {
   [ErrorCode.VALIDATION]: { message: 'Validation error' },
   [ErrorCode.DATABASE]: { message: 'Database error' },

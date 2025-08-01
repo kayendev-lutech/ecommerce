@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { apiGetCategory, apiUpdateCategory } from '@/api/category/category.api'
+import { ActionButtons } from '@/components/ui/button'
 import router, { RoutePath } from '@/router'
 import { Icon } from '@iconify/vue'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-
 interface Category {
     id: string
     name: string
@@ -248,11 +248,12 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button @click="handleCancel" class="btn-cancel">Cancel</button>
-                <button @click="handleSave" class="btn-save">Update Category</button>
-            </div>
+            <ActionButtons
+                :onCancel="handleCancel"
+                :onSave="handleSave"
+                cancelText="Cancel"
+                saveText="Save Changes"
+            />
         </div>
     </div>
 </template>
