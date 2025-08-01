@@ -4,17 +4,16 @@ import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 import { debugInConsole } from '../constants/env.constants';
 
-// CommonJS: dùng __filename và __dirname có sẵn
-// const __filename = __filename;
-// const __dirname = __dirname;
-
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 interface LoggerOptions {
   logToConsole?: boolean;
   logLevel?: LogLevel;
 }
-
+/**
+ * Singleton Logger class for application-wide logging with file and console output.
+ * Supports colored console output and file persistence with unique session IDs.
+ */
 class Logger {
   private static instance: Logger;
   private logFilePath: string;
@@ -49,7 +48,14 @@ class Logger {
       console.log(formattedMessage.trim());
     }
   }
-
+  /**
+   * Formats log message with colors for console output.
+   * @param level Log level
+   * @param timestamp ISO timestamp string
+   * @param message Log message
+   * @param additionalInfo Optional additional information
+   * @returns Formatted colored string
+   */
   private getColoredMessage(
     level: LogLevel,
     timestamp: string,

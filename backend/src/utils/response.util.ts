@@ -15,14 +15,23 @@ interface ErrorResponse {
   message?: string;
   status?: number;
 }
-
+/**
+ * Sends a standardized success response to the client.
+ * Handles both SuccessResponse objects and plain data.
+ * @param res Express response object
+ * @param result SuccessResponse or plain data
+ */
 function handleSuccess<T>(res: Response, result: SuccessResponse<T> | T) {
-  let responseData: SuccessResponse<T> ;
+  let responseData: SuccessResponse<T>;
   const defaultMessage = 'Operation successful';
 
-   
   if (typeof result === 'object' && result !== null && (result as SuccessResponse<T>)?.status) {
-    const { status = 200, data, message = defaultMessage, pagination } = result as SuccessResponse<T>;
+    const {
+      status = 200,
+      data,
+      message = defaultMessage,
+      pagination,
+    } = result as SuccessResponse<T>;
 
     responseData = result;
 
@@ -32,10 +41,10 @@ function handleSuccess<T>(res: Response, result: SuccessResponse<T> | T) {
       status: 200,
       message: defaultMessage,
       data: (result as any)?.data as unknown as T,
-      pagination: (result as any)?.pagination
+      pagination: (result as any)?.pagination,
     };
 
-    res.status(responseData?.status || 200).json({success: true,...responseData});
+    res.status(responseData?.status || 200).json({ success: true, ...responseData });
   }
 }
 

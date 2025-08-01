@@ -1,6 +1,15 @@
 import { Request, Response } from 'express';
 import { handleError, handleSuccess } from './response.util';
 
+/**
+ * Interface representing a normalized request object for controller methods.
+ * @template B Body type
+ * @template H Headers type
+ * @template P Params type
+ * @template Q Query type
+ * @template U User type
+ * @template K DeviceId type
+ */
 export interface WrappedRequest<B = any, H = any, P = any, Q = any, U = any, K = any> {
   body: B;
   headers: H;
@@ -20,7 +29,10 @@ export type WrappedController<T> = T & { [key: string]: any };
 
 export class WrapperClass<T extends Record<string, any>> {
   private instance: T;
-
+  /**
+   * Constructs a WrapperClass instance and returns a Proxy that wraps controller methods.
+   * @param instance Controller instance to wrap
+   */
   constructor(instance: T) {
     this.instance = instance;
 

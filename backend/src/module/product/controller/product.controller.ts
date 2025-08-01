@@ -66,7 +66,7 @@ export class ProductController {
       message: 'Product deleted',
     };
   }
-  
+
   async uploadImage({ params, file }: FileUploadRequest) {
     if (!file) {
       throw new BadRequestException('No image file uploaded.');
@@ -76,7 +76,7 @@ export class ProductController {
     if (!imageUrl) {
       throw new BadRequestException('No image file uploaded or upload failed.');
     }
-    
+
     const updatedProduct = await this.productService.updateProductImage(params.id, imageUrl);
 
     return {

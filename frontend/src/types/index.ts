@@ -1,5 +1,5 @@
 export interface IBaseFilterRequest {
-    page?: number
-    limit?: number
-    search?: string
+    page?: number        
+    pageSize?: number    
+    search?: string      
 }

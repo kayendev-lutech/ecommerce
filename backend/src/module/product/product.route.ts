@@ -1,7 +1,7 @@
 import { WrapperClass } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { ProductController } from '@module/product/controller/product.controller';
-// validate dto
+// Validate dto
 import { validateRequest } from '@middlewares/dto-validator';
 import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';

@@ -3,13 +3,21 @@ import ProductTable from '@/components/product/ProductTable.vue'
 import { useProducts } from '@/composables/useProducts'
 import router, { RoutePath } from '@/router'
 
-const { products, totalItems, searchTerm, tablePagination, isLoading, isFetching } = useProducts()
+const {
+    products,
+    totalItems,
+    totalPages, 
+    tablePagination,
+    isFetching,
+    searchTerm
+} = useProducts();
+
 
 const handleAction = async (action: string, productId: number) => {
     if (action === 'delete') {
-        if (confirm(`Are you sure you want to delete product with ID ${productId}?`)) {
-            console.log(`Deleting product with ID ${productId}`)
-        }
+        // if (confirm(`Are you sure you want to delete product with ID ${productId}?`)) {
+        //     console.log(`Deleting product with ID ${productId}`)
+        // }
     } else if (action === 'edit') {
         await router.push(`${RoutePath.AdminProductEdit}/${productId}`)
     }
@@ -24,6 +32,9 @@ const handleAction = async (action: string, productId: number) => {
             :products="products"
             :loading="isFetching"
             :search-term="searchTerm"
+            :totalItems="totalItems"
+            :totalPages="totalPages" 
+            :pagination="tablePagination"
             @update:pagination="tablePagination = $event"
             @action="handleAction"
         />
