@@ -2,6 +2,7 @@ import { WrappedRequest } from '@utils/wrapper.util';
 import { UserService } from '@module/user/service/user.service';
 import { AppError, ErrorCode } from '@errors/app-error';
 import { instanceToPlain } from 'class-transformer';
+import { HttpResponse } from '@utils/http-response.util';
 
 export class UserController {
   private userService: UserService;
@@ -12,10 +13,7 @@ export class UserController {
 
   async me({ user }: WrappedRequest) {
     const result = await this.userService.me(user.userId);
-    return {
-      status: 200,
-      data: instanceToPlain(result),
-    };
+    return HttpResponse.ok(instanceToPlain(result), 'User profile retrieved successfully');
   }
 
   async getById({ params }: WrappedRequest) {
@@ -23,18 +21,20 @@ export class UserController {
     if (!user) {
       throw new AppError(ErrorCode.NOT_FOUND, 404, 'User not found');
     }
-    return {
-      status: 200,
-      data: instanceToPlain(user),
-    };
+    return HttpResponse.ok(instanceToPlain(user), 'User retrieved successfully');
   }
 
   async getAll(): Promise<any> {
     const users = await this.userService.getAll();
-    return {
-      status: 200,
-      data: users.map((u) => instanceToPlain(u)),
-    };
+    return HttpResponse.ok(
+      users.map((u) => instanceToPlain(u)),
+      'Users retrieved successfully'
+    );
+  }
+
+  async createUser({ body }: WrappedRequest) {
+    const created = await this.userService.createUser(body);
+    return HttpResponse.created(instanceToPlain(created), 'User created successfully');
   }
 
   async updateUser({ params, body }: WrappedRequest) {
@@ -42,18 +42,11 @@ export class UserController {
     if (!updated) {
       throw new AppError(ErrorCode.NOT_FOUND, 404, 'User not found');
     }
-    return {
-      status: 200,
-      data: instanceToPlain(updated),
-      message: 'User updated',
-    };
+    return HttpResponse.ok(instanceToPlain(updated), 'User updated successfully');
   }
 
   async deleteUser({ params }: WrappedRequest) {
     await this.userService.deleteUser(params.id);
-    return {
-      status: 200,
-      message: 'User deleted',
-    };
+    return HttpResponse.noContent('User deleted successfully');
   }
 }

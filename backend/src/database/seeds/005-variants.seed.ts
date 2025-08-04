@@ -6,18 +6,34 @@ export const seedVariants = async () => {
   const variantRepo = AppDataSource.getRepository(Variant);
   const productRepo = AppDataSource.getRepository(Product);
 
-  const iphone = await productRepo.findOne({ where: { slug: 'iphone-14' } });
-  if (!iphone) throw new Error("Product 'iPhone 14' not found. Seed products first!");
+  const products = await productRepo.find();
 
-  const variants = [
-    { product_id: iphone.id, name: 'iPhone 14 - 128GB', price: 999.99, stock: 10 },
-    { product_id: iphone.id, name: 'iPhone 14 - 256GB', price: 1099.99, stock: 8 },
+  const variantTemplates = [
+    (product: Product) => ({
+      product_id: product.id,
+      name: `${product.name} - Option 1`,
+      price: Number(product.price),
+      stock: 10,
+      attributes: { option: 'Option 1' },
+      is_active: true,
+    }),
+    (product: Product) => ({
+      product_id: product.id,
+      name: `${product.name} - Option 2`,
+      price: Number(product.price) + 100,
+      stock: 5,
+      attributes: { option: 'Option 2' },
+      is_active: true,
+    }),
   ];
 
-  for (const v of variants) {
-    const exists = await variantRepo.findOne({ where: { name: v.name, product_id: v.product_id } });
-    if (!exists) {
-      await variantRepo.save(variantRepo.create(v));
+  for (const product of products) {
+    for (const makeVariant of variantTemplates) {
+      const v = makeVariant(product);
+      const exists = await variantRepo.findOne({ where: { name: v.name, product_id: v.product_id } });
+      if (!exists) {
+        await variantRepo.save(variantRepo.create(v));
+      }
     }
   }
 

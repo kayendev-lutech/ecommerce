@@ -29,7 +29,9 @@ export class ProductRepository {
   async findById(id: string): Promise<Product | null> {
     return this.repo.findOne({ where: { id } });
   }
-
+  async findBySlug(slug: string): Promise<Product | null> {
+    return this.repo.findOne({ where: { slug } });
+  }
   async createProduct(data: Partial<Product>): Promise<Product> {
     const product = this.repo.create(data);
     return this.repo.save(product);

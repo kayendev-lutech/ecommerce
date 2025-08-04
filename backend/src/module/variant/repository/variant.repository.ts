@@ -12,16 +12,16 @@ export class VariantRepository {
     return this.repo.findOne({ where: { id } });
   }
   async findByProductId(product_id: string): Promise<Variant[]> {
-    return this.repo.find({
-      where: { product_id },
-    });
+    return this.repo.find({ where: { product_id } });
   }
 
   async createVariant(data: Partial<Variant>): Promise<Variant> {
     const variant = this.repo.create(data);
     return this.repo.save(variant);
   }
-
+  async findByNameAndProductId(name: string, product_id: string): Promise<Variant | null> {
+    return this.repo.findOne({ where: { name, product_id } });
+  }
   async updateVariant(id: string, data: Partial<Variant>): Promise<Variant | null> {
     await this.repo.update({ id }, data);
     return this.findById(id);
@@ -29,5 +29,9 @@ export class VariantRepository {
 
   async deleteVariant(id: string): Promise<void> {
     await this.repo.delete({ id });
+  }
+
+  async findBySku(sku: string): Promise<Variant | null> {
+    return this.repo.findOne({ where: { sku } });
   }
 }

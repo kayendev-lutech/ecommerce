@@ -5,7 +5,6 @@ import { globalLimiter, authLimiter } from '@config/rateLimit.config';
 import { corsOptions } from '@config/cors.config';
 import { helmetOptions } from '@config/helmet.config';
 // Middleware
-import { errorHandler } from '@middlewares/errorHandler';
 import { generateDeviceIdMiddleware } from '@middlewares/deviceId-generator.middleware';
 import apiWatcher from '@middlewares/api-watcher.middleware';
 import notFoundHandler from '@middlewares/notFoundHandler';
@@ -18,7 +17,7 @@ import categoryRoute from '@module/category/category.route';
 // Swagger
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
-import { swaggerOptions } from './swagger.config.js';
+import { swaggerOptions } from './swagger.config';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -45,6 +44,5 @@ app.use('/api/v1/variant', variantRoute);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(notFoundHandler);
-app.use(errorHandler);
 
 export default app;

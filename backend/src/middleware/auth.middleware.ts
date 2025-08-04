@@ -30,7 +30,6 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
       });
     }
 
-    // Attach user information to the request object
     req.user = { userId: decoded.userId, username: decoded.username };
   } catch (error) {
     return handleError(res, {

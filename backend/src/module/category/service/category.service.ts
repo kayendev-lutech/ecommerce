@@ -1,28 +1,15 @@
-import { CategoryRepository } from '@module/category/repository/category.respository';
 import { Category } from '@module/category/entity/category.entity';
-import { AppError, ErrorCode, NotFoundException, InternalServerErrorException } from '@errors/app-error';
-
-/**
- * Service handling business logic for category management.
- */
+import { ConflictException } from '@errors/app-error';
+import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
+import { ICategoryRepository } from '@module/category/interfaces/category-repository.interface';
 export class CategoryService {
-  private categoryRepository: CategoryRepository;
-
-  constructor() {
-    this.categoryRepository = new CategoryRepository();
-  }
-
+  constructor(private categoryRepository: ICategoryRepository) {}
   /**
    * Retrieves all categories.
    * @returns Array of categories
-   * @throws InternalServerErrorException if database operation fails
    */
   async getAll(): Promise<Category[]> {
-    try {
-      return await this.categoryRepository.findAll();
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to retrieve categories');
-    }
+    return this.categoryRepository.findAll();
   }
 
   /**
@@ -38,17 +25,14 @@ export class CategoryService {
    * Creates a new category.
    * @param data Category data
    * @returns Created category
-   * @throws InternalServerErrorException if creation fails
+   * @throws ConflictException if category with same slug already exists
    */
   async create(data: Partial<Category>): Promise<Category> {
-    try {
-      return await this.categoryRepository.createCategory(data);
-    } catch (error: any) {
-      if (error?.code === '23505') {
-        throw new AppError(ErrorCode.CONFLICT, 409, 'Category with this slug already exists');
-      }
-      throw new InternalServerErrorException('Failed to create category');
+    if (data.slug) {
+      const existingCategory = await this.categoryRepository.findBySlug(data.slug);
+      ensureNotExist(existingCategory, 'Category with this slug already exists');
     }
+    return this.categoryRepository.createCategory(data);
   }
 
   /**
@@ -59,10 +43,7 @@ export class CategoryService {
    */
   async getByIdOrFail(id: string): Promise<Category> {
     const category = await this.getById(id);
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
-    return category;
+    return ensureFound(category, 'Category not found');
   }
 
   /**
@@ -71,13 +52,21 @@ export class CategoryService {
    * @param data Update data
    * @returns Updated category
    * @throws NotFoundException if category not found
+   * @throws ConflictException if slug already exists
    */
   async update(id: string, data: Partial<Category>): Promise<Category> {
-    const updated = await this.categoryRepository.updateCategory(id, data);
-    if (!updated) {
-      throw new NotFoundException('Category not found');
+    await this.getByIdOrFail(id);
+
+    // Check conflict
+    if (data.slug) {
+      const existingCategory = await this.categoryRepository.findBySlug(data.slug);
+      if (existingCategory && existingCategory.id !== id) {
+        throw new ConflictException('Category with this slug already exists');
+      }
     }
-    return updated;
+
+    const updated = await this.categoryRepository.updateCategory(id, data);
+    return ensureFound(updated, 'Category not found');
   }
 
   /**
@@ -86,10 +75,11 @@ export class CategoryService {
    * @throws NotFoundException if category not found
    */
   async delete(id: string): Promise<void> {
+    // Check if category exists first
+    await this.getByIdOrFail(id);
+    
     const deleted = await this.categoryRepository.deleteCategory(id);
-    if (!deleted) {
-      throw new NotFoundException('Category not found');
-    }
+    ensureFound(deleted, 'Category not found');
   }
 
   /**
@@ -99,8 +89,9 @@ export class CategoryService {
    * @returns Updated category
    * @throws NotFoundException if category not found
    */
-  // async updateCategoryImage(id: string, imageUrl: string): Promise<Category | null> {
+  // async updateCategoryImage(id: string, imageUrl: string): Promise<Category> {
   //   await this.getByIdOrFail(id);
-  //   return this.categoryRepository.updateCategory(id, { thumbnail: imageUrl });
+  //   const updated = await this.categoryRepository.updateCategory(id, { thumbnail: imageUrl });
+  //   return ensureFound(updated, 'Category not found');
   // }
 }

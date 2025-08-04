@@ -1,60 +1,92 @@
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
-import { AppError, ErrorCode, InternalServerErrorException } from '@errors/app-error';
+import { ConflictException } from '@errors/app-error';
+import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
+import { ProductRepository } from '@module/product/repository/product.respository';
 
 export class VariantService {
   private variantRepository = new VariantRepository();
+  private productRepository = new ProductRepository();
 
-  async getAll(): Promise<Variant[]> {
-    return this.variantRepository.findAll();
-  }
-
+  /**
+   * Get variant by ID or throw error if not found
+   */
   async getById(id: string): Promise<Variant> {
-    try {
-      const variant = await this.variantRepository.findById(id);
-      if (!variant) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Variant not found');
-      }
-      return variant;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get variant');
-    }
-  }
-  async create(data: Partial<Variant>): Promise<Variant> {
-    try {
-      return await this.variantRepository.createVariant(data);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to create variant');
-    }
+    const variant = await this.variantRepository.findById(id);
+    return ensureFound(variant, 'Variant not found');
   }
 
+  /**
+   * Get all variants for a specific product
+   */
   async getByProductId(product_id: string): Promise<Variant[]> {
-    try {
-      return await this.variantRepository.findByProductId(product_id);
-    } catch (error: any) {
-      throw new InternalServerErrorException(
-        error?.message || 'Failed to get variants by product id',
+    // Ensure product exists
+    const product = await this.productRepository.findById(product_id);
+    ensureFound(product, 'Product not found');
+    
+    return this.variantRepository.findByProductId(product_id);
+  }
+  /**
+   * Update variant by ID
+   */
+  async update(id: string, data: Partial<Variant>): Promise<Variant> {
+    const variant = await this.getById(id);
+
+    if (data.name) {
+      const exist = await this.variantRepository.findByNameAndProductId(
+        data.name, 
+        variant.product_id
       );
-    }
-  }
-
-  async update(id: string, data: Partial<Variant>): Promise<Variant | null> {
-    try {
-      const updated = await this.variantRepository.updateVariant(id, data);
-      if (!updated) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Variant not found');
+      if (exist && exist.id !== id) {
+        throw new ConflictException('Variant name must be unique within a product');
       }
-      return updated;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to update variant');
     }
+
+    if (data.sku) {
+      const existSku = await this.variantRepository.findBySku(data.sku);
+      if (existSku && existSku.id !== id) {
+        throw new ConflictException('SKU already exists');
+      }
+    }
+
+    const updated = await this.variantRepository.updateVariant(id, data);
+    return ensureFound(updated, 'Variant not found');
   }
 
+  /**
+   * Delete variant by ID
+   * Note: When deleting a product, all variants are automatically deleted via CASCADE
+   */
   async delete(id: string): Promise<void> {
-    try {
-      await this.variantRepository.deleteVariant(id);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to delete variant');
-    }
+    await this.getById(id);
+    await this.variantRepository.deleteVariant(id);
+  }
+
+  /**
+   * Get variant by SKU
+   */
+  async getBySku(sku: string): Promise<Variant> {
+    const variant = await this.variantRepository.findBySku(sku);
+    return ensureFound(variant, 'Variant not found');
+  }
+
+  /**
+   * Check if variant name is unique within a product
+   */
+  async isNameUniqueInProduct(name: string, productId: string, excludeVariantId?: string): Promise<boolean> {
+    const existing = await this.variantRepository.findByNameAndProductId(name, productId);
+    if (!existing) return true;
+    if (excludeVariantId && existing.id === excludeVariantId) return true;
+    return false;
+  }
+
+  /**
+   * Check if SKU is globally unique
+   */
+  async isSkuUnique(sku: string, excludeVariantId?: string): Promise<boolean> {
+    const existing = await this.variantRepository.findBySku(sku);
+    if (!existing) return true;
+    if (excludeVariantId && existing.id === excludeVariantId) return true;
+    return false;
   }
 }

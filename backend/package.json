@@ -16,7 +16,7 @@
     "lint": "eslint src",
     "format": "prettier --write src/**/*.{ts}",
     "lint:fix": "eslint src --fix",
-    "migration:generate": "npx tsx node_modules/typeorm/cli.js migration:generate ./src/database/migrations/CreateTokenTable -d ./src/config/typeorm.config.ts",
+    "migration:generate": "npx tsx node_modules/typeorm/cli.js migration:generate ./src/database/migrations/CreateVariantTable -d ./src/config/typeorm.config.ts",
     "migration:run": "npx tsx node_modules/typeorm/cli.js migration:run -d ./src/config/typeorm.config.ts",
     "seed:roles": "npx tsx src/database/seeds/001-roles.seed.ts",
     "seed:users": "npx tsx src/database/seeds/002-users.seed.ts",
@@ -114,6 +114,7 @@
     "typescript": "^5.6.2"
   },
   "dependencies": {
+    "@nestjs/mapped-types": "^2.1.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

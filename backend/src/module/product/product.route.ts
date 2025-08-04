@@ -6,6 +6,7 @@ import { validateRequest } from '@middlewares/dto-validator';
 import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateProductDto } from './dto/create-product.dto';
 import { IdParamDto } from './dto/id-param.dto';
 const router = Router();
 const wrappedProductController = new WrapperClass(
@@ -66,20 +67,42 @@ router.get('/:id', validateRequest(IdParamDto, 'params'), wrappedProductControll
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - slug
+ *               - price
+ *               - category_id
  *             properties:
  *               name:
  *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 100
  *               slug:
  *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
  *               price:
  *                 type: number
+ *                 minimum: 0.01
+ *                 maximum: 999999.99
+ *               discount_price:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999999.99
+ *               currency_code:
+ *                 type: string
+ *                 default: "VND"
  *               category_id:
  *                 type: integer
+ *                 minimum: 1
  *     responses:
  *       201:
  *         description: Sản phẩm đã được tạo
  */
-router.post('/', wrappedProductController.create);
+router.post('/', validateRequest(CreateProductDto), wrappedProductController.create);
 /**
  * @swagger
  * /product/{id}:

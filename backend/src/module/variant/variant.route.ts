@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { VariantController } from './controller/variant.controller.js';
 import { WrapperClass } from '@utils/wrapper.util.js';
-
+import { CreateVariantDto } from './dto/create-variant.dto';
+import { UpdateVariantDto } from './dto/update-variant.dto';
+import { validateRequest } from '@middlewares/dto-validator';
 const router = Router();
 const wrappedVariantController = new WrapperClass(
   new VariantController(),
@@ -66,7 +68,7 @@ router.get('/:id', wrappedVariantController.getById);
  *       201:
  *         description: Biến thể đã được tạo
  */
-router.post('/', wrappedVariantController.create);
+router.post('/', validateRequest(CreateVariantDto), wrappedVariantController.create);
 
 /**
  * @swagger
@@ -99,7 +101,7 @@ router.post('/', wrappedVariantController.create);
  *       200:
  *         description: Biến thể đã được cập nhật
  */
-router.put('/:id', wrappedVariantController.update);
+router.put('/:id', validateRequest(UpdateVariantDto), wrappedVariantController.update);
 
 /**
  * @swagger

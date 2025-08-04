@@ -1,7 +1,9 @@
 import { WrapperClass } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { UserController } from '@module/user/controller/user.controller';
-import authMiddleware from '@middlewares/auth.middleware.js';
+import authMiddleware from '@middlewares/auth.middleware';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { validateRequest } from '@middlewares/dto-validator';
 
 const router = Router();
 const wrappedUserController = new WrapperClass(
@@ -101,7 +103,12 @@ router.get('/:id', authMiddleware, wrappedUserController.getById);
  *       200:
  *         description: Người dùng đã được cập nhật
  */
-router.put('/:id', authMiddleware, wrappedUserController.updateUser);
+router.put(
+  '/:id',
+  validateRequest(UpdateUserDto),
+  authMiddleware,
+  wrappedUserController.updateUser,
+);
 
 /**
  * @swagger

@@ -1,6 +1,7 @@
 import { ProductService } from '@module/product/service/product.service';
 import { WrappedRequest } from '@utils/wrapper.util';
 import { BadRequestException } from '@errors/app-error';
+import { HttpResponse } from '@utils/http-response.util';
 
 interface FileUploadRequest extends WrappedRequest {
   file?: Express.Multer.File;
@@ -17,54 +18,34 @@ export class ProductController {
       search,
       order,
     );
-    const totalPages = Math.ceil(total / Number(limit));
-    return {
-      success: 200,
-      message: 'Operation successful',
+    
+    return HttpResponse.paginated(
       data,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages,
-        hasNextPage: Number(page) < totalPages,
-        hasPreviousPage: Number(page) > 1,
-      },
-    };
+      total,
+      Number(page),
+      Number(limit),
+      'Products retrieved successfully'
+    );
   }
 
   async getById({ params }: WrappedRequest) {
-    const product = await this.productService.getByIdOrFail(params.id);
-    return {
-      status: 200,
-      data: product,
-    };
+    const product = await this.productService.getById(params.id);
+    return HttpResponse.ok(product, 'Product retrieved successfully');
   }
 
   async create({ body }: WrappedRequest) {
     const created = await this.productService.create(body);
-    return {
-      status: 201,
-      data: created,
-      message: 'Product created',
-    };
+    return HttpResponse.created(created, 'Product created successfully');
   }
 
   async update({ params, body }: WrappedRequest) {
     const updated = await this.productService.update(params.id, body);
-    return {
-      status: 200,
-      data: updated,
-      message: 'Product updated',
-    };
+    return HttpResponse.ok(updated, 'Product updated successfully');
   }
 
   async delete({ params }: WrappedRequest) {
     await this.productService.delete(params.id);
-    return {
-      status: 200,
-      message: 'Product deleted',
-    };
+    return HttpResponse.noContent('Product deleted successfully');
   }
 
   async uploadImage({ params, file }: FileUploadRequest) {
@@ -78,11 +59,6 @@ export class ProductController {
     }
 
     const updatedProduct = await this.productService.updateProductImage(params.id, imageUrl);
-
-    return {
-      status: 200,
-      data: updatedProduct,
-      message: 'Image uploaded successfully',
-    };
+    return HttpResponse.ok(updatedProduct, 'Image uploaded successfully');
   }
 }

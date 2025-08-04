@@ -2,7 +2,9 @@ import { WrapperClass } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { CategoryController } from './controller/category.controller';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
-
+import { validateRequest } from '@middlewares/dto-validator';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 const router = Router();
 const wrappedCategoryController = new WrapperClass(
   new CategoryController(),
@@ -67,7 +69,7 @@ router.get('/:id', wrappedCategoryController.getById);
  *       201:
  *         description: Danh mục đã được tạo
  */
-router.post('/', wrappedCategoryController.create);
+router.post('/', validateRequest(CreateCategoryDto), wrappedCategoryController.create);
 
 /**
  * @swagger
@@ -102,7 +104,7 @@ router.post('/', wrappedCategoryController.create);
  *       200:
  *         description: Danh mục đã được cập nhật
  */
-router.put('/:id', wrappedCategoryController.update);
+router.put('/:id', validateRequest(UpdateCategoryDto), wrappedCategoryController.update);
 
 /**
  * @swagger
@@ -151,9 +153,9 @@ router.delete('/:id', wrappedCategoryController.delete);
  *       200:
  *         description: Ảnh đã được upload thành công
  */
-router.post(
-  '/:id/upload-image',
-  uploadProductImage.single('image'),
-  wrappedCategoryController.uploadImage,
-);
+// router.post(
+//   '/:id/upload-image',
+//   uploadProductImage.single('image'),
+//   wrappedCategoryController.uploadImage,
+// );
 export default router;
