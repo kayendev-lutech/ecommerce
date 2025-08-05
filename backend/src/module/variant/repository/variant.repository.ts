@@ -34,4 +34,10 @@ export class VariantRepository {
   async findBySku(sku: string): Promise<Variant | null> {
     return this.repo.findOne({ where: { sku } });
   }
+  async findManyBySkus(skus: string[]): Promise<Variant[]> {
+    if (!skus.length) return [];
+    return await this.repo.find({
+      where: skus.map((sku) => ({ sku })),
+    });
+  }
 }

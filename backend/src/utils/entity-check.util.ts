@@ -15,6 +15,9 @@ export function ensureFound<T>(entity: T | null | undefined, message = 'Resource
  * @param entity Entity cần kiểm tra
  * @param message Thông báo lỗi
  */
-export function ensureNotExist<T>(entity: T | null | undefined, message = 'Resource already exists'): void {
+export function ensureNotExist<T>(
+  entity: T | null | undefined,
+  message = 'Resource already exists',
+): void {
   if (entity) throw new ConflictException(message);
 }

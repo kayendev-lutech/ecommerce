@@ -19,12 +19,11 @@ export class VariantService {
   /**
    * Get all variants for a specific product
    */
-  async getByProductId(product_id: string): Promise<Variant[]> {
-    // Ensure product exists
-    const product = await this.productRepository.findById(product_id);
+  async getByProductId(id: string): Promise<Variant[]> {
+    const product = await this.productRepository.findById(id);
     ensureFound(product, 'Product not found');
-    
-    return this.variantRepository.findByProductId(product_id);
+
+    return this.variantRepository.findByProductId(id);
   }
   /**
    * Update variant by ID
@@ -34,8 +33,8 @@ export class VariantService {
 
     if (data.name) {
       const exist = await this.variantRepository.findByNameAndProductId(
-        data.name, 
-        variant.product_id
+        data.name,
+        variant.product_id,
       );
       if (exist && exist.id !== id) {
         throw new ConflictException('Variant name must be unique within a product');
@@ -52,7 +51,40 @@ export class VariantService {
     const updated = await this.variantRepository.updateVariant(id, data);
     return ensureFound(updated, 'Variant not found');
   }
+  /**
+   * Create a new variant for a product
+   * @param data Thông tin biến thể
+   * @returns Variant đã tạo
+   * @throws ConflictException nếu tên hoặc SKU bị trùng
+   */
+  async create(data: Partial<Variant>): Promise<Variant> {
+    const product = await this.productRepository.findById(data.product_id as string);
+    ensureFound(product, 'Product not found');
 
+    if (data.name) {
+      const exist = await this.variantRepository.findByNameAndProductId(
+        data.name,
+        data.product_id as string,
+      );
+      ensureNotExist(exist, 'Variant name must be unique within a product');
+    }
+
+    if (data.sku) {
+      const existSku = await this.variantRepository.findBySku(data.sku);
+      ensureNotExist(existSku, 'SKU already exists');
+    }
+
+    const variantData = {
+      ...data,
+      currency_code: data.currency_code || product?.currency_code || 'VND',
+      price: data.price ?? product?.price,
+      is_active: data.is_active ?? true,
+      is_default: data.is_default ?? false,
+      sort_order: data.sort_order ?? 0,
+    };
+
+    return this.variantRepository.createVariant(variantData);
+  }
   /**
    * Delete variant by ID
    * Note: When deleting a product, all variants are automatically deleted via CASCADE
@@ -68,25 +100,5 @@ export class VariantService {
   async getBySku(sku: string): Promise<Variant> {
     const variant = await this.variantRepository.findBySku(sku);
     return ensureFound(variant, 'Variant not found');
-  }
-
-  /**
-   * Check if variant name is unique within a product
-   */
-  async isNameUniqueInProduct(name: string, productId: string, excludeVariantId?: string): Promise<boolean> {
-    const existing = await this.variantRepository.findByNameAndProductId(name, productId);
-    if (!existing) return true;
-    if (excludeVariantId && existing.id === excludeVariantId) return true;
-    return false;
-  }
-
-  /**
-   * Check if SKU is globally unique
-   */
-  async isSkuUnique(sku: string, excludeVariantId?: string): Promise<boolean> {
-    const existing = await this.variantRepository.findBySku(sku);
-    if (!existing) return true;
-    if (excludeVariantId && existing.id === excludeVariantId) return true;
-    return false;
   }
 }

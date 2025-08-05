@@ -1,11 +1,15 @@
 import { Category } from '@module/category/entity/category.entity';
 import { ICategoryRepository } from '@module/category/interfaces/category-repository.interface';
-import { DataSource } from 'typeorm';
+import { Repository } from 'typeorm';
+import { Service } from 'typedi';
+import { AppDataSource } from '@config/typeorm.config';
 
+@Service()
 export class CategoryRepository implements ICategoryRepository {
-  constructor(private dataSource: DataSource) {}
-  private get repo() {
-    return this.dataSource.getRepository(Category);
+  private repo: Repository<Category>;
+
+  constructor() {
+    this.repo = AppDataSource.getRepository(Category);
   }
   async findAll(): Promise<Category[]> {
     return this.repo.find();
@@ -26,6 +30,12 @@ export class CategoryRepository implements ICategoryRepository {
   }
   async findBySlug(slug: string): Promise<Category | null> {
     return this.repo.findOne({ where: { slug } });
+  }
+  async findByParentId(parentId: number): Promise<Category[]> {
+    return this.repo.find({
+      where: { parent_id: parentId },
+      order: { sort_order: 'ASC' },
+    });
   }
   async deleteCategory(id: string): Promise<boolean> {
     const result = await this.repo.delete({ id });

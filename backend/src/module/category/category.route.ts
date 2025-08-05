@@ -5,11 +5,13 @@ import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
 import { validateRequest } from '@middlewares/dto-validator';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import Container from 'typedi';
 const router = Router();
-const wrappedCategoryController = new WrapperClass(
-  new CategoryController(),
-) as unknown as CategoryController & { [key: string]: any };
 
+const categoryController = Container.get(CategoryController);
+const wrappedCategoryController = new WrapperClass(
+  categoryController,
+) as unknown as CategoryController & { [key: string]: any };
 /**
  * @swagger
  * /category:

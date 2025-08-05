@@ -1,8 +1,6 @@
 import { ProductRepository } from '@module/product/repository/product.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
-import {
-  ConflictException,
-} from '@errors/app-error.js';
+import { ConflictException } from '@errors/app-error.js';
 import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
@@ -11,8 +9,6 @@ import { AppDataSource } from '@config/typeorm.config';
 export class ProductService {
   private productRepository = new ProductRepository();
   private variantRepository = new VariantRepository();
-  // private categoryRepository = new CategoryRepository();
-
   /**
    * Get all products with pagination, search, and order.
    */
@@ -47,7 +43,9 @@ export class ProductService {
    * Create a new product.
    * @throws ConflictException if product with same slug or variant SKU exists, or variant names are not unique
    */
-  async create(data: Partial<Product> & { variants?: Partial<Variant>[] }): Promise<Product & { variants: Variant[] }> {
+  async create(
+    data: Partial<Product> & { variants?: Partial<Variant>[] },
+  ): Promise<Product & { variants: Variant[] }> {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -56,13 +54,13 @@ export class ProductService {
       if (data.slug) {
         ensureNotExist(
           await this.productRepository.findBySlug(data.slug),
-          'Slug đã tồn tại. Vui lòng chọn slug khác.'
+          'Slug đã tồn tại. Vui lòng chọn slug khác.',
         );
       }
 
       const { variants = [], ...productData } = data;
       const createdProduct = await queryRunner.manager.save(
-        queryRunner.manager.create(Product, productData)
+        queryRunner.manager.create(Product, productData),
       );
 
       let createdVariants: Variant[];
@@ -73,7 +71,7 @@ export class ProductService {
 
         const variantData = this.buildVariantData(variants, createdProduct);
         createdVariants = await queryRunner.manager.save(
-          queryRunner.manager.create(Variant, variantData)
+          queryRunner.manager.create(Variant, variantData),
         );
       } else {
         const defaultVariant: Partial<Variant> = {
@@ -83,13 +81,11 @@ export class ProductService {
           currency_code: createdProduct.currency_code,
           stock: 0,
           is_default: true,
-          is_active: true
+          is_active: true,
         };
 
         createdVariants = [
-          await queryRunner.manager.save(
-            queryRunner.manager.create(Variant, defaultVariant)
-          )
+          await queryRunner.manager.save(queryRunner.manager.create(Variant, defaultVariant)),
         ];
       }
 
@@ -105,55 +101,18 @@ export class ProductService {
   /**
    * Update product by ID.
    */
-  async update(
-    id: string,
-    data: Partial<Product> & { variants?: Partial<Variant>[] }
-  ): Promise<Product & { variants: Variant[] }> {
-    const queryRunner = AppDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+  async update(id: string, data: Partial<Product>): Promise<Product> {
+    await this.getByIdOrFail(id);
 
-    try {
-      const product = await this.productRepository.findById(id);
-      ensureFound(product, 'Không tìm thấy sản phẩm.');
-
-      if (data.slug) {
-        const exist = await this.productRepository.findBySlug(data.slug);
-        if (exist && exist.id !== id) {
-          throw new ConflictException('Slug này đã được sử dụng cho sản phẩm khác.');
-        }
+    if (data.slug) {
+      const existingProduct = await this.productRepository.findBySlug(data.slug);
+      if (existingProduct && existingProduct.id !== id) {
+        throw new ConflictException('Slug already exists. Please choose another slug.');
       }
-
-      await queryRunner.manager.update(Product, id, data);
-
-      let updatedVariants: Variant[] = [];
-
-      if (data.variants) {
-        await queryRunner.manager.delete(Variant, { product_id: id });
-
-        this.validateVariantNames(data.variants);
-        await this.ensureUniqueSkus(data.variants, id);
-
-        const variantData = this.buildVariantData(data.variants, { id, ...product, ...data });
-        updatedVariants = await queryRunner.manager.save(
-          queryRunner.manager.create(Variant, variantData)
-        );
-      } else {
-        updatedVariants = await this.variantRepository.findByProductId(id);
-      }
-
-      await queryRunner.commitTransaction();
-
-      const updatedProduct = await this.productRepository.findById(id);
-      ensureFound(updatedProduct, 'Không tìm thấy sản phẩm sau khi cập nhật.');
-
-      return { ...(updatedProduct as Product), variants: updatedVariants };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    const updated = await this.productRepository.updateProduct(id, data);
+    return ensureFound(updated, 'Product not found after update attempt');
   }
 
   /**
@@ -168,31 +127,42 @@ export class ProductService {
    * Update product image URL.
    */
   async updateProductImage(id: string, imageUrl: string): Promise<Product> {
-    await this.getByIdOrFail(id);
+    try {
+      // Ensure product exists
+      await this.getByIdOrFail(id);
 
-    const updated = await this.productRepository.updateProduct(id, { image_url: imageUrl });
-    return ensureFound(updated, 'Product not found after update attempt');
+      // Update product with new image URL
+      const updated = await this.productRepository.updateProduct(id, {
+        image_url: imageUrl,
+      });
+
+      return ensureFound(updated, 'Product not found after update attempt');
+    } catch (error) {
+      console.error('Update product image error:', error);
+      throw error;
+    }
   }
   private validateVariantNames(variants: Partial<Variant>[]) {
-    const names = variants.map(v => v.name?.trim()).filter(Boolean);
+    const names = variants.map((v) => v.name?.trim()).filter(Boolean);
     const uniqueNames = new Set(names);
     if (uniqueNames.size !== names.length) {
-      throw new ConflictException('Tên các phiên bản (variant) trong cùng một sản phẩm phải là duy nhất.');
+      throw new ConflictException('Variant names within the same product must be unique.');
     }
   }
   private async ensureUniqueSkus(variants: Partial<Variant>[], currentProductId?: string) {
-    for (const v of variants) {
-      if (v.sku) {
-        const existing = await this.variantRepository.findBySku(v.sku);
-        if (existing && existing.product_id !== currentProductId) {
-          throw new ConflictException(`SKU '${v.sku}' đã được sử dụng bởi sản phẩm khác.`);
-        }
+    const skus = variants.map((v) => v.sku).filter(Boolean) as string[];
+    if (skus.length === 0) return;
+
+    const existingVariants = await this.variantRepository.findManyBySkus(skus);
+    for (const existing of existingVariants) {
+      if (!currentProductId || existing.product_id !== currentProductId) {
+        throw new ConflictException(`SKU '${existing.sku}' đã được sử dụng bởi sản phẩm khác.`);
       }
     }
   }
   private buildVariantData(
     variants: Partial<Variant>[],
-    product: Partial<Product> & { id: string }
+    product: Partial<Product> & { id: string },
   ): Partial<Variant>[] {
     return variants.map((v, i) => ({
       ...v,
@@ -200,7 +170,7 @@ export class ProductService {
       currency_code: v.currency_code || product.currency_code || 'VND',
       price: v.price ?? product.price ?? 0,
       is_default: v.is_default ?? i === 0,
-      sort_order: v.sort_order ?? i
+      sort_order: v.sort_order ?? i,
     }));
   }
 }

@@ -28,7 +28,7 @@ export class UserController {
     const users = await this.userService.getAll();
     return HttpResponse.ok(
       users.map((u) => instanceToPlain(u)),
-      'Users retrieved successfully'
+      'Users retrieved successfully',
     );
   }
 

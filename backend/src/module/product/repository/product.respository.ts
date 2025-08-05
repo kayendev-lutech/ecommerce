@@ -1,5 +1,6 @@
 import { AppDataSource } from '@config/typeorm.config';
 import { Product } from '@module/product/entity/product.entity';
+import { Variant } from '@module/variant/entity/variant.entity';
 import { Like } from 'typeorm';
 
 export class ProductRepository {

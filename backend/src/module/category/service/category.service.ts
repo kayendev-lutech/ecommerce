@@ -1,9 +1,15 @@
 import { Category } from '@module/category/entity/category.entity';
 import { ConflictException } from '@errors/app-error';
 import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
-import { ICategoryRepository } from '@module/category/interfaces/category-repository.interface';
+import { Inject, Service } from 'typedi';
+import { CategoryRepository } from '../repository/category.respository';
+
+@Service()
 export class CategoryService {
-  constructor(private categoryRepository: ICategoryRepository) {}
+  constructor(
+    @Inject(() => CategoryRepository)
+    private readonly categoryRepository: CategoryRepository,
+  ) {}
   /**
    * Retrieves all categories.
    * @returns Array of categories
@@ -77,11 +83,13 @@ export class CategoryService {
   async delete(id: string): Promise<void> {
     // Check if category exists first
     await this.getByIdOrFail(id);
-    
+
     const deleted = await this.categoryRepository.deleteCategory(id);
     ensureFound(deleted, 'Category not found');
   }
-
+  async getByParentId(parentId: number): Promise<Category[]> {
+    return this.categoryRepository.findByParentId(parentId);
+  }
   /**
    * Updates a category's thumbnail image.
    * @param id Category ID

@@ -18,13 +18,13 @@ export class ProductController {
       search,
       order,
     );
-    
+
     return HttpResponse.paginated(
       data,
       total,
       Number(page),
       Number(limit),
-      'Products retrieved successfully'
+      'Products retrieved successfully',
     );
   }
 
@@ -49,16 +49,13 @@ export class ProductController {
   }
 
   async uploadImage({ params, file }: FileUploadRequest) {
-    if (!file) {
-      throw new BadRequestException('No image file uploaded.');
-    }
-    const imageUrl = file?.path;
-
-    if (!imageUrl) {
-      throw new BadRequestException('No image file uploaded or upload failed.');
+    if (!file || !file.path) {
+      throw new BadRequestException('No image file provided');
     }
 
+    const imageUrl = file.path; // Cloudinary URL
     const updatedProduct = await this.productService.updateProductImage(params.id, imageUrl);
+
     return HttpResponse.ok(updatedProduct, 'Image uploaded successfully');
   }
 }

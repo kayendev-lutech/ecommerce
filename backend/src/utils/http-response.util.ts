@@ -60,13 +60,7 @@ export class HttpResponse {
    * @param limit Items per page
    * @param message Success message
    */
-  static paginated<T>(
-    data: T[],
-    total: number,
-    page: number,
-    limit: number,
-    message = 'Success',
-  ) {
+  static paginated<T>(data: T[], total: number, page: number, limit: number, message = 'Success') {
     const totalPages = Math.ceil(total / limit);
     return {
       status: 200,

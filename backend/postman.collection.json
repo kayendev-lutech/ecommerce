@@ -1,342 +1,638 @@
 {
-	"info": {
-		"_postman_id": "e0d43be7-5a39-42ae-b9ed-603bed6abab9",
-		"name": "Template Collection",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "37296069"
-	},
-	"item": [
-		{
-			"name": "Authentication",
-			"item": [
-				{
-					"name": "Register",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									" let deviceId = pm.response.headers.get(\"device-id\");",
-									"    let responseBody = pm.response.json(); // Parse the response body as JSON",
-									"    ",
-									"    let token = responseBody.data?.token;",
-									"    let refreshToken = responseBody.data?.refreshToken;",
-									"",
-									"    pm.collectionVariables.set(\"deviceId\", deviceId);",
-									"    pm.collectionVariables.set(\"token\", token);",
-									"    pm.collectionVariables.set(\"refreshToken\", refreshToken);",
-									"}",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "device-id",
-								"value": "{{deviceId}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\"username\": \"ffewdfwewew\",\n\"email\":\"fbwjefwcwfwhe@he.com\",\n\"password\":\"yfuewb\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/api/register",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"api",
-								"register"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									" let deviceId = pm.response.headers.get(\"device-id\");",
-									"    let responseBody = pm.response.json(); // Parse the response body as JSON",
-									"    ",
-									"    let token = responseBody.data?.token;",
-									"    let refreshToken = responseBody.data?.refreshToken;",
-									"",
-									"    pm.collectionVariables.set(\"deviceId\", deviceId);",
-									"    pm.collectionVariables.set(\"token\", token);",
-									"    pm.collectionVariables.set(\"refreshToken\", refreshToken);",
-									"}",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "device-id",
-								"value": "{{deviceId}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\":\"fbwjefwhe@he.com\",\n    \"password\":\"yfuewb\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/api/login",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"api",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Refresh Token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									" let deviceId = pm.response.headers.get(\"device-id\");",
-									"    let responseBody = pm.response.json(); // Parse the response body as JSON",
-									"    ",
-									"    let token = responseBody.data?.token;",
-									"    let refreshToken = responseBody.data?.refreshToken;",
-									"",
-									"    pm.collectionVariables.set(\"deviceId\", deviceId);",
-									"    pm.collectionVariables.set(\"token\", token);",
-									"    pm.collectionVariables.set(\"refreshToken\", refreshToken);",
-									"}",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "refreshToken",
-								"value": "{{refreshToken}}",
-								"type": "text"
-							},
-							{
-								"key": "device-id",
-								"value": "{{deviceId}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{url}}/api/refresh",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"api",
-								"refresh"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Logout",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "device-id",
-								"value": "{{deviceId}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{url}}/api/logout",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"api",
-								"logout"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Logout from All Device",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "device-id",
-								"value": "{{deviceId}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{url}}/api/logAllOut",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"api",
-								"logAllOut"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "User",
-			"item": [
-				{
-					"name": "Me",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "device-id",
-								"value": "{{deviceId}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{url}}/api/user/me",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"api",
-								"user",
-								"me"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					"var deviceId = pm.environment.get('deviceId');",
-					"",
-					"// Check if the token exists",
-					"if (deviceId) {",
-					"    // Set the Authorization header for all requests in the collection",
-					"    pm.request.headers.add({",
-					"        key: 'device-id',",
-					"        value: deviceId",
-					"    });",
-					"} else {",
-					"    console.log('No access token found in environment');",
-					"}"
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "url",
-			"value": "http://localhost:8000",
-			"type": "string"
-		},
-		{
-			"key": "deviceId",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "token",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "refreshToken",
-			"value": "",
-			"type": "string"
-		}
-	]
+    "info": {
+        "_postman_id": "e0d43be7-5a39-42ae-b9ed-603bed6abab9",
+        "name": "E-commerce API Collection",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_exporter_id": "37296069",
+        "description": "Complete API collection for E-commerce backend with Authentication, User, Product, Category, and Variant endpoints"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Register",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    let deviceId = pm.response.headers.get(\"device-id\");",
+                                    "    let responseBody = pm.response.json();",
+                                    "    let token = responseBody.data?.token;",
+                                    "    let refreshToken = responseBody.data?.refreshToken;",
+                                    "    pm.collectionVariables.set(\"deviceId\", deviceId);",
+                                    "    pm.collectionVariables.set(\"token\", token);",
+                                    "    pm.collectionVariables.set(\"refreshToken\", refreshToken);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"full_name\": \"Test User\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/auth/register",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "auth", "register"]
+                        }
+                    }
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    let deviceId = pm.response.headers.get(\"device-id\");",
+                                    "    let responseBody = pm.response.json();",
+                                    "    let token = responseBody.data?.token;",
+                                    "    let refreshToken = responseBody.data?.refreshToken;",
+                                    "    pm.collectionVariables.set(\"deviceId\", deviceId);",
+                                    "    pm.collectionVariables.set(\"token\", token);",
+                                    "    pm.collectionVariables.set(\"refreshToken\", refreshToken);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/auth/login",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "auth", "login"]
+                        }
+                    }
+                },
+                {
+                    "name": "Refresh Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    let responseBody = pm.response.json();",
+                                    "    let token = responseBody.data?.token;",
+                                    "    let refreshToken = responseBody.data?.refreshToken;",
+                                    "    pm.collectionVariables.set(\"token\", token);",
+                                    "    pm.collectionVariables.set(\"refreshToken\", refreshToken);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "refreshToken",
+                                "value": "{{refreshToken}}"
+                            },
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{url}}/api/v1/auth/refresh",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "auth", "refresh"]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{url}}/api/v1/auth/logout",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "auth", "logout"]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout All Devices",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{url}}/api/v1/auth/logAllOut",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "auth", "logAllOut"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "User",
+            "item": [
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{url}}/api/v1/user",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "user"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Current User (Me)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{url}}/api/v1/user/me",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "user", "me"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"full_name\": \"Updated User Name\",\n    \"phone\": \"+1234567890\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/user/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "user", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "device-id",
+                                "value": "{{deviceId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{url}}/api/v1/user/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "user", "1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Category",
+            "item": [
+                {
+                    "name": "Get All Categories",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/category",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "category"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Category by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/category/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "category", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Category",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Electronics\",\n    \"slug\": \"electronics\",\n    \"description\": \"Electronic devices and accessories\",\n    \"sort_order\": 1,\n    \"is_active\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/category",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "category"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Category",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Electronics\",\n    \"description\": \"Updated description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/category/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "category", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Category",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{url}}/api/v1/category/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "category", "1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Product",
+            "item": [
+                {
+                    "name": "Get All Products",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/product?page=1&limit=10&search=&order=ASC",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "search",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "order",
+                                    "value": "ASC"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Product by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/product/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Product",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"iPhone 14 Pro\",\n    \"slug\": \"iphone-14-pro\",\n    \"description\": \"Latest iPhone with Pro features\",\n    \"price\": 999.99,\n    \"discount_price\": 899.99,\n    \"currency_code\": \"USD\",\n    \"category_id\": 1,\n    \"image_url\": \"https://example.com/iphone14pro.jpg\",\n    \"variants\": [\n        {\n            \"name\": \"iPhone 14 Pro - 128GB Black\",\n            \"sku\": \"IP14P-128-BLK\",\n            \"price\": 999.99,\n            \"stock\": 10,\n            \"attributes\": {\n                \"storage\": \"128GB\",\n                \"color\": \"Black\"\n            },\n            \"is_default\": true,\n            \"sort_order\": 0\n        },\n        {\n            \"name\": \"iPhone 14 Pro - 256GB Silver\",\n            \"sku\": \"IP14P-256-SIL\",\n            \"price\": 1099.99,\n            \"stock\": 5,\n            \"attributes\": {\n                \"storage\": \"256GB\",\n                \"color\": \"Silver\"\n            },\n            \"is_default\": false,\n            \"sort_order\": 1\n        }\n    ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/product",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Product",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated iPhone 14 Pro\",\n    \"price\": 1099.99,\n    \"description\": \"Updated description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/product/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Product",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{url}}/api/v1/product/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Upload Product Image",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "image",
+                                    "type": "file",
+                                    "src": "/path/to/your/image.jpg"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/product/1/upload-image",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product", "1", "upload-image"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Variant",
+            "item": [
+                {
+                    "name": "Get Variants by Product ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/variant?product_id=1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "variant"],
+                            "query": [
+                                {
+                                    "key": "product_id",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Variant by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/variant/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "variant", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Variant",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"product_id\": 1,\n    \"name\": \"iPhone 14 Pro - 512GB Gold\",\n    \"sku\": \"IP14P-512-GLD\",\n    \"price\": 1299.99,\n    \"stock\": 3,\n    \"attributes\": {\n        \"storage\": \"512GB\",\n        \"color\": \"Gold\"\n    },\n    \"is_default\": false,\n    \"sort_order\": 2\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/variant",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "variant"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Variant",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Variant Name\",\n    \"price\": 1199.99,\n    \"stock\": 15\n}"
+                        },
+                        "url": {
+                            "raw": "{{url}}/api/v1/variant/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "variant", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Variant",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{url}}/api/v1/variant/1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "variant", "1"]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "var deviceId = pm.collectionVariables.get('deviceId');",
+                    "",
+                    "if (deviceId) {",
+                    "    pm.request.headers.add({",
+                    "        key: 'device-id',",
+                    "        value: deviceId",
+                    "    });",
+                    "} else {",
+                    "    console.log('No device ID found in collection variables');",
+                    "}"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [""]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "deviceId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "refreshToken",
+            "value": "",
+            "type": "string"
+        }
+    ]
 }

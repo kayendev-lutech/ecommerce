@@ -30,7 +30,9 @@ export const seedVariants = async () => {
   for (const product of products) {
     for (const makeVariant of variantTemplates) {
       const v = makeVariant(product);
-      const exists = await variantRepo.findOne({ where: { name: v.name, product_id: v.product_id } });
+      const exists = await variantRepo.findOne({
+        where: { name: v.name, product_id: v.product_id },
+      });
       if (!exists) {
         await variantRepo.save(variantRepo.create(v));
       }

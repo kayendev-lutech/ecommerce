@@ -2,13 +2,15 @@ import { WrappedRequest } from '@utils/wrapper.util';
 import { HttpResponse } from '@utils/http-response.util';
 import { ICategoryService } from '@module/category/interfaces/category-service.interface';
 import { Container } from '@container/container';
+import { Inject, Service } from 'typedi';
+import { CategoryService } from '../service/category.service';
 
+@Service()
 export class CategoryController {
-  private categoryService: ICategoryService;
-
-  constructor() {
-    this.categoryService = Container.getInstance().resolve('CategoryService');
-  }
+  constructor(
+    @Inject(() => CategoryService)
+    private readonly categoryService: CategoryService,
+  ) {}
 
   async getAll(_req: WrappedRequest) {
     const result = await this.categoryService.getAll();
@@ -33,5 +35,9 @@ export class CategoryController {
   async delete({ params }: WrappedRequest) {
     await this.categoryService.delete(params.id);
     return HttpResponse.noContent('Category deleted successfully');
+  }
+  async getByParent({ params }: WrappedRequest) {
+    const categories = await this.categoryService.getByParentId(parseInt(params.parentId));
+    return HttpResponse.ok(categories, 'Child categories retrieved successfully');
   }
 }
