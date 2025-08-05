@@ -387,30 +387,20 @@
                     "request": {
                         "method": "GET",
                         "url": {
-                            "raw": "{{url}}/api/v1/product?page=1&limit=10&search=&order=ASC",
-                            "host": ["{{url}}"],
-                            "path": ["api", "v1", "product"],
-                            "query": [
-                                {
-                                    "key": "page",
-                                    "value": "1"
-                                },
-                                {
-                                    "key": "limit",
-                                    "value": "10"
-                                },
-                                {
-                                    "key": "search",
-                                    "value": ""
-                                },
-                                {
-                                    "key": "order",
-                                    "value": "ASC"
-                                }
-                            ]
+                        "raw": "{{url}}/api/v1/product?page=1&limit=10&search=Anker&order=ASC&sortBy=name&category_id=1",
+                        "host": ["{{url}}"],
+                        "path": ["api", "v1", "product"],
+                        "query": [
+                            { "key": "page", "value": "1" },
+                            { "key": "limit", "value": "10" },
+                            { "key": "search", "value": "Anker" },
+                            { "key": "order", "value": "ASC" },
+                            { "key": "sortBy", "value": "name" },
+                            { "key": "category_id", "value": "1" }
+                        ]
                         }
                     }
-                },
+                    },
                 {
                     "name": "Get Product by ID",
                     "request": {

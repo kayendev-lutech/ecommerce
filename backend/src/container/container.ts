@@ -26,7 +26,7 @@ export class Container {
 
 // Register dependencies
 const container = Container.getInstance();
-container.register('CategoryRepository', () => new CategoryRepository(AppDataSource));
+container.register('CategoryRepository', () => new CategoryRepository());
 container.register(
   'CategoryService',
   () => new CategoryService(container.resolve('CategoryRepository')),

@@ -9,22 +9,47 @@ export class ProductRepository {
   async findAll(): Promise<Product[]> {
     return this.repo.find();
   }
-  async findWithPagination(
-    page: number,
-    limit: number,
-    search?: string,
-    order: 'ASC' | 'DESC' = 'ASC',
-  ): Promise<{ data: Product[]; total: number }> {
-    const where: any = {};
+  async findWithPagination(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    order?: 'ASC' | 'DESC';
+    sortBy?: string;
+    [key: string]: any;
+  }): Promise<{ data: Product[]; total: number }> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      order = 'ASC',
+      sortBy = 'created_at',
+      ...filters
+    } = params;
+
+    const qb = this.repo.createQueryBuilder('product');
+
+    // Search theo name (LIKE %search%)
     if (search) {
-      where.name = Like(`%${search}%`);
+      qb.andWhere('product.name LIKE :search', { search: `%${search.trim()}%` });
     }
-    const [data, total] = await this.repo.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-      where,
-      order: { created_at: order },
-    });
+
+    // Filter theo dynamic fields (VD: category_id, is_active, ...)
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') {
+        qb.andWhere(`product.${key} = :${key}`, { [key]: value });
+      }
+    }
+
+    // Xác định field để sort (bảo vệ trước SQL injection)
+    const validSortFields = ['id', 'name', 'price', 'created_at']; // thêm fields phù hợp schema của bạn
+    const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+
+    qb.orderBy(`product.${finalSortBy}`, order)
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return { data, total };
   }
   async findById(id: string): Promise<Product | null> {

@@ -10,17 +10,27 @@ export class ProductService {
   private productRepository = new ProductRepository();
   private variantRepository = new VariantRepository();
   /**
-   * Get all products with pagination, search, and order.
+   * Retrieves a paginated list of products with optional search, sorting, and additional filters.
+   *
+   * @param params - The parameters for pagination and filtering.
+   * @param params.page - The page number to retrieve (optional).
+   * @param params.limit - The number of items per page (optional).
+   * @param params.search - A search query to filter products (optional).
+   * @param params.order - The order direction, either 'ASC' or 'DESC' (optional).
+   * @param params.sortBy - The field to sort by (optional).
+   * @param params.[key] - Additional filter parameters specific to the product entity.
+   * @returns A promise resolving to the paginated list of products.
    */
-  async getAllWithPagination(
-    page: number,
-    limit: number,
-    search?: string,
-    order: 'ASC' | 'DESC' = 'ASC',
-  ) {
-    return this.productRepository.findWithPagination(page, limit, search, order);
+  async getAllWithPagination(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    order?: 'ASC' | 'DESC';
+    sortBy?: string;
+    [key: string]: any;
+  }) {
+    return this.productRepository.findWithPagination(params);
   }
-
   /**
    * Get product by ID.
    */

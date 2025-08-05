@@ -11,13 +11,15 @@ export class ProductController {
   private productService = new ProductService();
 
   async getAll({ query }: WrappedRequest) {
-    const { page = 1, limit = 10, search, order = 'ASC' } = query;
-    const { data, total } = await this.productService.getAllWithPagination(
-      Number(page),
-      Number(limit),
-      search,
+    const { page = 1, limit = 10, search, order = 'ASC', sortBy, ...filters } = query;
+    const { data, total } = await this.productService.getAllWithPagination({
+      page: Number(page),
+      limit: Number(limit),
+      search: search ? String(search) : undefined,
       order,
-    );
+      sortBy,
+      ...filters,
+    });
 
     return HttpResponse.paginated(
       data,
