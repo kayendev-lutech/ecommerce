@@ -5,9 +5,9 @@ import { ProductController } from '@module/product/controller/product.controller
 import { validateRequest } from '@middlewares/dto-validator';
 import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { CreateProductDto } from './dto/create-product.dto';
-import { IdParamDto } from './dto/id-param.dto';
+import { UpdateProductDto } from '@module/product/dto/update-product.dto';
+import { CreateProductDto } from '@module/product/dto/create-product.dto';
+import { IdParamDto } from '@module/product/dto/id-param.dto';
 const router = Router();
 const wrappedProductController = new WrapperClass(
   new ProductController(),

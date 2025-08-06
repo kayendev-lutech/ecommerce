@@ -1,7 +1,7 @@
 import { WrappedRequest } from '@utils/wrapper.util';
 import { HttpResponse } from '@utils/http-response.util';
 import { Inject, Service } from 'typedi';
-import { CategoryService } from '../service/category.service';
+import { CategoryService } from '@module/category/service/category.service';
 
 @Service()
 export class CategoryController {

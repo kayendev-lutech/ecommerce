@@ -2,7 +2,7 @@ import { Category } from '@module/category/entity/category.entity';
 import { ConflictException } from '@errors/app-error';
 import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
 import { Inject, Service } from 'typedi';
-import { CategoryRepository } from '../repository/category.respository';
+import { CategoryRepository } from '@module/category/repository/category.respository';
 
 @Service()
 export class CategoryService {

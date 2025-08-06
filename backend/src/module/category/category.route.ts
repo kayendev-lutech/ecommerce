@@ -3,8 +3,8 @@ import { Router } from 'express';
 import { CategoryController } from './controller/category.controller';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
 import { validateRequest } from '@middlewares/dto-validator';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CreateCategoryDto } from '@module/category/dto/create-category.dto';
+import { UpdateCategoryDto } from '@module/category/dto/update-category.dto';
 import Container from 'typedi';
 const router = Router();
 

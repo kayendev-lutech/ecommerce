@@ -1,5 +1,5 @@
-import { UserRepository } from '../repository/user.respository';
-import { User } from '../entity/user.entity';
+import { UserRepository } from '@module/user/repository/user.respository';
+import { User } from '@module/user/entity/user.entity';
 import { AppError, ErrorCode, InternalServerErrorException } from '@errors/app-error';
 import { RegisterUserDto } from '@module/authentication/dto/register.dto';
 export class UserService {

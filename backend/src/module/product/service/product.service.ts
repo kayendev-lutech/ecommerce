@@ -79,7 +79,6 @@ export class ProductService {
 
       if (variants.length > 0) {
         this.validateVariantNames(variants);
-        await this.ensureUniqueSkus(variants);
 
         const variantData = this.buildVariantData(variants, createdProduct);
         createdVariants = await queryRunner.manager.save(
@@ -159,17 +158,6 @@ export class ProductService {
     const uniqueNames = new Set(names);
     if (uniqueNames.size !== names.length) {
       throw new ConflictException('Variant names within the same product must be unique.');
-    }
-  }
-  private async ensureUniqueSkus(variants: Partial<Variant>[], currentProductId?: string) {
-    const skus = variants.map((v) => v.sku).filter(Boolean) as string[];
-    if (skus.length === 0) return;
-
-    const existingVariants = await this.variantRepository.findManyBySkus(skus);
-    for (const existing of existingVariants) {
-      if (!currentProductId || existing.product_id !== currentProductId) {
-        throw new ConflictException(`SKU '${existing.sku}' đã được sử dụng bởi sản phẩm khác.`);
-      }
     }
   }
   private buildVariantData(
