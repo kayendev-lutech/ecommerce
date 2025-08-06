@@ -48,10 +48,12 @@ export class ProductService {
     const product = await this.productRepository.findById(id);
     return ensureFound(product, 'Product not found');
   }
-
   /**
-   * Create a new product.
-   * @throws ConflictException if product with same slug or variant SKU exists, or variant names are not unique
+   * Creates a new product along with its variants in a transactional manner.
+  *
+  * @param data - Partial product data, optionally including an array of variant data.
+   * @returns A promise that resolves to the created product with its associated variants.
+   * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
    */
   async create(
     data: Partial<Product> & { variants?: Partial<Variant>[] },

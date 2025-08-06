@@ -1,7 +1,5 @@
 import { WrappedRequest } from '@utils/wrapper.util';
 import { HttpResponse } from '@utils/http-response.util';
-import { ICategoryService } from '@module/category/interfaces/category-service.interface';
-import { Container } from '@container/container';
 import { Inject, Service } from 'typedi';
 import { CategoryService } from '../service/category.service';
 

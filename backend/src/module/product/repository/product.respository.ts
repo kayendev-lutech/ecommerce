@@ -28,20 +28,15 @@ export class ProductRepository {
 
     const qb = this.repo.createQueryBuilder('product');
 
-    // Search theo name (LIKE %search%)
     if (search) {
       qb.andWhere('product.name LIKE :search', { search: `%${search.trim()}%` });
     }
-
-    // Filter theo dynamic fields (VD: category_id, is_active, ...)
     for (const [key, value] of Object.entries(filters)) {
       if (value !== undefined && value !== null && value !== '') {
         qb.andWhere(`product.${key} = :${key}`, { [key]: value });
       }
     }
-
-    // Xác định field để sort (bảo vệ trước SQL injection)
-    const validSortFields = ['id', 'name', 'price', 'created_at']; // thêm fields phù hợp schema của bạn
+    const validSortFields = ['id', 'name', 'price', 'created_at'];
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
 
     qb.orderBy(`product.${finalSortBy}`, order)
