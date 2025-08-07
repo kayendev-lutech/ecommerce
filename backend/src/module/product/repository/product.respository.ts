@@ -1,20 +1,18 @@
 import { AppDataSource } from '@config/typeorm.config';
 import { Product } from '@module/product/entity/product.entity';
+import { ListProductReqDto } from '../dto/list-product-req.dto';
 
 export class ProductRepository {
   private repo = AppDataSource.getRepository(Product);
 
+  get repository() {
+    return this.repo;
+  }
+
   async findAll(): Promise<Product[]> {
     return this.repo.find();
   }
-  async findWithPagination(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    order?: 'ASC' | 'DESC';
-    sortBy?: string;
-    [key: string]: any;
-  }): Promise<{ data: Product[]; total: number }> {
+  async findWithPagination(params: ListProductReqDto): Promise<{ data: Product[]; total: number }> {
     const {
       page = 1,
       limit = 10,
@@ -29,8 +27,9 @@ export class ProductRepository {
     if (search) {
       qb.andWhere('product.name LIKE :search', { search: `%${search.trim()}%` });
     }
+    const validFilterFields = ['category_id', 'is_active', 'is_visible', 'currency_code'];
     for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== '' && validFilterFields.includes(key)) {
         qb.andWhere(`product.${key} = :${key}`, { [key]: value });
       }
     }

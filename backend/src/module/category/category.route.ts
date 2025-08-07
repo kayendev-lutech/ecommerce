@@ -9,9 +9,10 @@ import Container from 'typedi';
 const router = Router();
 
 const categoryController = Container.get(CategoryController);
-const wrappedCategoryController = new WrapperClass(
-  categoryController,
-) as unknown as CategoryController & { [key: string]: any };
+
+// const wrappedCategoryController = new WrapperClass(
+//   categoryController,
+// ) as unknown as CategoryController & { [key: string]: any };
 /**
  * @swagger
  * /category:
@@ -23,7 +24,7 @@ const wrappedCategoryController = new WrapperClass(
  *       200:
  *         description: Danh sách danh mục
  */
-router.get('/', wrappedCategoryController.getAll);
+router.get('/', categoryController.getAll.bind(categoryController));
 
 /**
  * @swagger
@@ -43,7 +44,7 @@ router.get('/', wrappedCategoryController.getAll);
  *       200:
  *         description: Thông tin danh mục
  */
-router.get('/:id', wrappedCategoryController.getById);
+router.get('/:id', categoryController.getById.bind(categoryController));
 
 /**
  * @swagger
@@ -71,7 +72,11 @@ router.get('/:id', wrappedCategoryController.getById);
  *       201:
  *         description: Danh mục đã được tạo
  */
-router.post('/', validateRequest(CreateCategoryDto), wrappedCategoryController.create);
+router.post(
+  '/',
+  validateRequest(CreateCategoryDto),
+  categoryController.create.bind(categoryController),
+);
 
 /**
  * @swagger
@@ -106,7 +111,11 @@ router.post('/', validateRequest(CreateCategoryDto), wrappedCategoryController.c
  *       200:
  *         description: Danh mục đã được cập nhật
  */
-router.put('/:id', validateRequest(UpdateCategoryDto), wrappedCategoryController.update);
+router.put(
+  '/:id',
+  validateRequest(UpdateCategoryDto),
+  categoryController.update.bind(categoryController),
+);
 
 /**
  * @swagger
@@ -126,7 +135,7 @@ router.put('/:id', validateRequest(UpdateCategoryDto), wrappedCategoryController
  *       200:
  *         description: Danh mục đã được xóa
  */
-router.delete('/:id', wrappedCategoryController.delete);
+router.delete('/:id', categoryController.delete.bind(categoryController));
 /**
  * @swagger
  * /category/{id}/upload-image:

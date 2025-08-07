@@ -6,6 +6,7 @@ import { UpdateVariantDto } from '@module/variant//dto/update-variant.dto';
 import { validateRequest } from '@middlewares/dto-validator';
 import { IdParamDto } from '@module/variant/dto/variant-id-query.dto';
 import { ProductIdQueryDto } from '@module/variant/dto/product-id-query.dto';
+import { ListVariantReqDto } from './dto/list-variant-req.dto';
 const router = Router();
 const wrappedVariantController = new WrapperClass(
   new VariantController(),
@@ -33,7 +34,7 @@ const wrappedVariantController = new WrapperClass(
  *       404:
  *         description: Không tìm thấy sản phẩm
  */
-router.get('/', validateRequest(ProductIdQueryDto, 'query'), wrappedVariantController.getAll);
+router.get('/', validateRequest(ListVariantReqDto, 'query'), wrappedVariantController.getAll);
 
 /**
  * @swagger

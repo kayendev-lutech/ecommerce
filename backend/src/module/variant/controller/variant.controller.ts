@@ -1,6 +1,8 @@
 import { WrappedRequest } from '@utils/wrapper.util';
 import { VariantService } from '@module/variant/service/variant.service';
 import { HttpResponse } from '@utils/http-response.util';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
+import { VariantResDto } from '../dto/variant.res.dto';
 
 export class VariantController {
   private variantService = new VariantService();
@@ -8,9 +10,19 @@ export class VariantController {
   /**
    * Get variants by product_id (required query param)
    */
-  async getAll({ query }: WrappedRequest) {
-    const variants = await this.variantService.getByProductId(query.product_id);
-    return HttpResponse.ok(variants, 'Product variants retrieved successfully');
+  async getAll({ query }: WrappedRequest): Promise<OffsetPaginatedDto<VariantResDto>> {
+    const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
+    
+    const result = await this.variantService.getAllWithPagination({
+      page: Number(page),
+      limit: Number(limit),
+      search: search ? String(search) : undefined,
+      order,
+      sortBy,
+      ...filters,
+    });
+
+    return result;
   }
 
   /**

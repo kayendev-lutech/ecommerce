@@ -2,6 +2,7 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",  
@@ -24,7 +25,7 @@
       "@types/*": ["src/types/*"],
       "@errors/*": ["src/errors/*"],
       "@common/*": ["src/common/*"],
-      "@container/*": ["src/container/*"]
+      "@decorators/*": ["src/decorators/*"],
     }
   },
   "include": ["src/**/*", "src/swagger.config.ts"],

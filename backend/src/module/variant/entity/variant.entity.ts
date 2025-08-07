@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
+import { Product } from '@module/product/entity/product.entity';
 
 @Entity('variants')
 export class Variant extends BaseEntity {
@@ -53,4 +54,8 @@ export class Variant extends BaseEntity {
 
   @Column({ type: 'int', default: 0 })
   sort_order?: number;
+
+  @ManyToOne(() => Product, product => product.variants)
+  @JoinColumn({ name: 'product_id' }) 
+  product!: Product;
 }

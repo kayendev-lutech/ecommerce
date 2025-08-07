@@ -1,14 +1,30 @@
+import { validate } from 'class-validator';
 import { ProductRepository } from '@module/product/repository/product.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
-import { ConflictException } from '@errors/app-error.js';
-import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
+import { ConflictException, NotFoundException } from '@errors/app-error.js';
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
 import { AppDataSource } from '@config/typeorm.config';
+import { Optional } from '@utils/optional.utils';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
+import { ProductResDto } from '@module/product/dto/product.res.dto';
+import { paginate } from '@utils/offset-pagination';
+import { plainToInstance } from 'class-transformer';
+import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
+import { LoadMoreProductsReqDto } from '@module/product/dto/load-more-products-req.dto';
+import { buildPaginator } from '@utils/cursor-pagination';
+import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
+import { ListProductReqDto } from '@module/product/dto/list-product-req.dto';
+import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
+import { validateVariantNames, buildVariantData } from '../validate/product.validate';
 
 export class ProductService {
   private productRepository = new ProductRepository();
   private variantRepository = new VariantRepository();
+
+  public getQueryBuilder(alias: string) {
+    return this.productRepository.repository.createQueryBuilder(alias);
+  }
   /**
    * Retrieves a paginated list of products with optional search, sorting, and additional filters.
    *
@@ -21,52 +37,51 @@ export class ProductService {
    * @param params.[key] - Additional filter parameters specific to the product entity.
    * @returns A promise resolving to the paginated list of products.
    */
-  async getAllWithPagination(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    order?: 'ASC' | 'DESC';
-    sortBy?: string;
-    [key: string]: any;
-  }) {
-    return this.productRepository.findWithPagination(params);
+  async getAllWithPagination(
+    reqDto: ListProductReqDto,
+  ): Promise<OffsetPaginatedDto<ProductResDto>> {
+    const { data, total } = await this.productRepository.findWithPagination(reqDto);
+    
+    const metaDto = new OffsetPaginationDto(total, reqDto);
+    
+    return new OffsetPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
   }
   /**
    * Get product by ID.
    */
-  async getById(id: string): Promise<(Product & { variants: Variant[] }) | null> {
-    const product = await this.productRepository.findById(id);
-    ensureFound(product, 'Product not found');
-    const variants = await this.variantRepository.findByProductId(id);
-    return { ...(product as Product), variants };
+  async getById(id: string): Promise<Product | null> {
+    const product = Optional.of(await this.productRepository.findById(id))
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get() as Product;
+
+    product.variants = await this.variantRepository.findByProductId(id);
+    return product;
   }
 
   /**
    * Get product by ID or throw error if not found.
    */
   async getByIdOrFail(id: string): Promise<Product> {
-    const product = await this.productRepository.findById(id);
-    return ensureFound(product, 'Product not found');
+    return Optional.of(await this.productRepository.findById(id))
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get() as Product;
   }
   /**
    * Creates a new product along with its variants in a transactional manner.
-  *
-  * @param data - Partial product data, optionally including an array of variant data.
+   *
+   * @param data - Partial product data, optionally including an array of variant data.
    * @returns A promise that resolves to the created product with its associated variants.
    * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
    */
-  async create(
-    data: Partial<Product> & { variants?: Partial<Variant>[] },
-  ): Promise<Product & { variants: Variant[] }> {
+  async create(data: Partial<Product> & { variants?: Partial<Variant>[] }): Promise<Product> {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       if (data.slug) {
-        ensureNotExist(
-          await this.productRepository.findBySlug(data.slug),
-          'Slug đã tồn tại. Vui lòng chọn slug khác.',
+        Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfPresent(
+          new ConflictException('Slug đã tồn tại. Vui lòng chọn slug khác.'),
         );
       }
 
@@ -78,9 +93,9 @@ export class ProductService {
       let createdVariants: Variant[];
 
       if (variants.length > 0) {
-        this.validateVariantNames(variants);
+        validateVariantNames(variants);
 
-        const variantData = this.buildVariantData(variants, createdProduct);
+        const variantData = buildVariantData(variants, createdProduct);
         createdVariants = await queryRunner.manager.save(
           queryRunner.manager.create(Variant, variantData),
         );
@@ -100,8 +115,10 @@ export class ProductService {
         ];
       }
 
+      createdProduct.variants = createdVariants;
+
       await queryRunner.commitTransaction();
-      return { ...createdProduct, variants: createdVariants };
+      return createdProduct;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -116,14 +133,18 @@ export class ProductService {
     await this.getByIdOrFail(id);
 
     if (data.slug) {
-      const existingProduct = await this.productRepository.findBySlug(data.slug);
-      if (existingProduct && existingProduct.id !== id) {
-        throw new ConflictException('Slug already exists. Please choose another slug.');
-      }
+      Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfExist(
+        new ConflictException('Slug already exists. Please choose another slug.'),
+      );
     }
 
     const updated = await this.productRepository.updateProduct(id, data);
-    return ensureFound(updated, 'Product not found after update attempt');
+    const product = Optional.of(updated)
+      .throwIfNullable(new NotFoundException('Product not found after update attempt'))
+      .get() as Product;
+
+    product.variants = await this.variantRepository.findByProductId(id);
+    return product;
   }
 
   /**
@@ -139,38 +160,49 @@ export class ProductService {
    */
   async updateProductImage(id: string, imageUrl: string): Promise<Product> {
     try {
-      // Ensure product exists
       await this.getByIdOrFail(id);
 
-      // Update product with new image URL
       const updated = await this.productRepository.updateProduct(id, {
         image_url: imageUrl,
       });
 
-      return ensureFound(updated, 'Product not found after update attempt');
+      const product = Optional.of(updated)
+        .throwIfNullable(new NotFoundException('Product not found after update attempt'))
+        .get() as Product;
+
+      product.variants = await this.variantRepository.findByProductId(id);
+      return product;
     } catch (error) {
       console.error('Update product image error:', error);
       throw error;
     }
   }
-  private validateVariantNames(variants: Partial<Variant>[]) {
-    const names = variants.map((v) => v.name?.trim()).filter(Boolean);
-    const uniqueNames = new Set(names);
-    if (uniqueNames.size !== names.length) {
-      throw new ConflictException('Variant names within the same product must be unique.');
-    }
-  }
-  private buildVariantData(
-    variants: Partial<Variant>[],
-    product: Partial<Product> & { id: string },
-  ): Partial<Variant>[] {
-    return variants.map((v, i) => ({
-      ...v,
-      product_id: product.id,
-      currency_code: v.currency_code || product.currency_code || 'VND',
-      price: v.price ?? product.price ?? 0,
-      is_default: v.is_default ?? i === 0,
-      sort_order: v.sort_order ?? i,
-    }));
+  async loadMoreProducts(
+    reqDto: LoadMoreProductsReqDto, 
+  ): Promise<CursorPaginatedDto<ProductResDto>> {
+    const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
+    
+    const paginator = buildPaginator({
+      entity: Product,
+      alias: 'product',
+      paginationKeys: ['created_at'],
+      query: {
+        limit: reqDto.limit,
+        order: 'DESC',
+        afterCursor: reqDto.afterCursor,
+        beforeCursor: reqDto.beforeCursor,
+      },
+    });
+
+    const { data, cursor } = await paginator.paginate(queryBuilder);
+
+    const metaDto = new CursorPaginationDto(
+      data.length,
+      cursor.afterCursor ?? '',
+      cursor.beforeCursor ?? '',
+      reqDto,
+    );
+
+    return new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
   }
 }

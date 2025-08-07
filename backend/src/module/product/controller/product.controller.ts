@@ -2,6 +2,9 @@ import { ProductService } from '@module/product/service/product.service';
 import { WrappedRequest } from '@utils/wrapper.util';
 import { BadRequestException } from '@errors/app-error';
 import { HttpResponse } from '@utils/http-response.util';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
+import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
+import { ProductResDto } from '@module/product/dto/product.res.dto';
 
 interface FileUploadRequest extends WrappedRequest {
   file?: Express.Multer.File;
@@ -10,9 +13,10 @@ interface FileUploadRequest extends WrappedRequest {
 export class ProductController {
   private productService = new ProductService();
 
-  async getAll({ query }: WrappedRequest) {
-    const { page = 1, limit = 10, search, order = 'ASC', sortBy, ...filters } = query;
-    const { data, total } = await this.productService.getAllWithPagination({
+  async getAll({ query }: WrappedRequest): Promise<OffsetPaginatedDto<ProductResDto>> {
+    const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
+    
+    const result = await this.productService.getAllWithPagination({
       page: Number(page),
       limit: Number(limit),
       search: search ? String(search) : undefined,
@@ -21,13 +25,20 @@ export class ProductController {
       ...filters,
     });
 
-    return HttpResponse.paginated(
-      data,
-      total,
-      Number(page),
-      Number(limit),
-      'Products retrieved successfully',
-    );
+    return result;
+  }
+
+  async loadMore({ query }: WrappedRequest): Promise<CursorPaginatedDto<ProductResDto>> {
+    const { limit = 10, afterCursor, beforeCursor, ...filters } = query;
+    
+    const result = await this.productService.loadMoreProducts({
+      limit: Number(limit),
+      afterCursor,
+      beforeCursor,
+      ...filters,
+    });
+
+    return result;
   }
 
   async getById({ params }: WrappedRequest) {

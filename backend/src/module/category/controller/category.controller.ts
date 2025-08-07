@@ -2,13 +2,17 @@ import { WrappedRequest } from '@utils/wrapper.util';
 import { HttpResponse } from '@utils/http-response.util';
 import { Inject, Service } from 'typedi';
 import { CategoryService } from '@module/category/service/category.service';
+import 'reflect-metadata';
 
 @Service()
 export class CategoryController {
   constructor(
     @Inject(() => CategoryService)
-    private readonly categoryService: CategoryService,
-  ) {}
+    public categoryService: CategoryService,
+  ) {
+    this.categoryService = categoryService;
+    console.log('categoryService: ', this.categoryService instanceof CategoryService);
+  }
 
   async getAll(_req: WrappedRequest) {
     const result = await this.categoryService.getAll();

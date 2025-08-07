@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
+import { Variant } from '@module/variant/entity/variant.entity';
 
 @Entity('products')
 export class Product extends BaseEntity {
@@ -38,4 +39,7 @@ export class Product extends BaseEntity {
 
   @Column({ type: 'json', nullable: true })
   metadata?: Record<string, any>;
+
+  @OneToMany(() => Variant, variant => variant.product)
+  variants?: Variant[];
 }

@@ -1,19 +1,36 @@
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
-import { ConflictException } from '@errors/app-error';
+import { ConflictException, NotFoundException } from '@errors/app-error';
 import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
 import { ProductRepository } from '@module/product/repository/product.respository';
+import { Optional } from '@utils/optional.utils';
+import { ListVariantReqDto } from '../dto/list-variant-req.dto';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
+import { VariantResDto } from '../dto/variant.res.dto';
+import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
+import { plainToInstance } from 'class-transformer';
+import { ProductResDto } from '@module/product/dto/product.res.dto';
 
 export class VariantService {
   private variantRepository = new VariantRepository();
   private productRepository = new ProductRepository();
 
+  async getAllWithPagination(
+      reqDto: ListVariantReqDto,
+    ): Promise<OffsetPaginatedDto<VariantResDto>> {
+      const { data, total } = await this.variantRepository.findWithPagination(reqDto);
+      
+      const metaDto = new OffsetPaginationDto(total, reqDto);
+      
+      return new OffsetPaginatedDto(plainToInstance(VariantResDto, data), metaDto);
+    }
   /**
    * Get variant by ID or throw error if not found
    */
   async getById(id: string): Promise<Variant> {
-    const variant = await this.variantRepository.findById(id);
-    return ensureFound(variant, 'Variant not found');
+    return Optional.of(await this.variantRepository.findById(id))
+      .throwIfNullable(new NotFoundException('Variant not found'))
+      .get() as Variant;
   }
 
   /**
@@ -29,27 +46,26 @@ export class VariantService {
    * Update variant by ID
    */
   async update(id: string, data: Partial<Variant>): Promise<Variant> {
-    const variant = await this.getById(id);
+    const variant = Optional.of(await this.getById(id))
+      .throwIfNullable(new NotFoundException('Variant not found'))
+      .get() as Variant;
 
-    if (data.name) {
+    if (data.name && variant.product_id) {
       const exist = await this.variantRepository.findByNameAndProductId(
-        data.name,
-        variant.product_id,
+        data.name as string,
+        variant.product_id as string,
       );
-      if (exist && exist.id !== id) {
-        throw new ConflictException('Variant name must be unique within a product');
-      }
+      Optional.of(exist).throwIfExist(new ConflictException('Variant name must be unique within a product'));
     }
 
     if (data.sku) {
-      const existSku = await this.variantRepository.findBySku(data.sku);
-      if (existSku && existSku.id !== id) {
-        throw new ConflictException('SKU already exists');
-      }
+      const existSku = await this.variantRepository.findBySku(data.sku as string);
+      Optional.of(existSku).throwIfExist(new ConflictException('SKU already exists'));
     }
 
-    const updated = await this.variantRepository.updateVariant(id, data);
-    return ensureFound(updated, 'Variant not found');
+    return Optional.of(await this.variantRepository.updateVariant(id, data))
+      .throwIfNullable(new NotFoundException('Variant not found after update attempt'))
+      .get() as Variant;
   }
   /**
    * Create a new variant for a product
@@ -58,26 +74,26 @@ export class VariantService {
    * @throws ConflictException nếu tên hoặc SKU bị trùng
    */
   async create(data: Partial<Variant>): Promise<Variant> {
-    const product = await this.productRepository.findById(data.product_id as string);
-    ensureFound(product, 'Product not found');
+    Optional.of(await this.productRepository.findById(data.product_id as string)).throwIfNullable(
+      new NotFoundException('Product not found'),
+    );
 
     if (data.name) {
-      const exist = await this.variantRepository.findByNameAndProductId(
-        data.name,
-        data.product_id as string,
-      );
-      ensureNotExist(exist, 'Variant name must be unique within a product');
+      Optional.of(
+        await this.variantRepository.findByNameAndProductId(data.name, data.product_id as string),
+      ).throwIfExist(new ConflictException('Variant name must be unique within a product'));
     }
 
     if (data.sku) {
-      const existSku = await this.variantRepository.findBySku(data.sku);
-      ensureNotExist(existSku, 'SKU already exists');
+      Optional.of(await this.variantRepository.findBySku(data.sku)).throwIfExist(
+        new ConflictException('SKU already exists'),
+      );
     }
 
     const variantData = {
       ...data,
-      currency_code: data.currency_code || product?.currency_code || 'VND',
-      price: data.price ?? product?.price,
+      currency_code: data.currency_code || 'VND',
+      price: data.price,
       is_active: data.is_active ?? true,
       is_default: data.is_default ?? false,
       sort_order: data.sort_order ?? 0,
@@ -98,7 +114,8 @@ export class VariantService {
    * Get variant by SKU
    */
   async getBySku(sku: string): Promise<Variant> {
-    const variant = await this.variantRepository.findBySku(sku);
-    return ensureFound(variant, 'Variant not found');
+    return Optional.of(await this.variantRepository.findBySku(sku))
+      .throwIfNullable(new NotFoundException('Variant not found'))
+      .get() as Variant;
   }
 }

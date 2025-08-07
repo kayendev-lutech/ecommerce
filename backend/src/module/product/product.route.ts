@@ -8,6 +8,8 @@ import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
 import { UpdateProductDto } from '@module/product/dto/update-product.dto';
 import { CreateProductDto } from '@module/product/dto/create-product.dto';
 import { IdParamDto } from '@module/product/dto/id-param.dto';
+import { ListProductReqDto } from './dto/list-product-req.dto';
+import { LoadMoreProductsReqDto } from './dto/load-more-products-req.dto';
 const router = Router();
 const wrappedProductController = new WrapperClass(
   new ProductController(),
@@ -34,7 +36,7 @@ const wrappedProductController = new WrapperClass(
  *       200:
  *         description: Danh sách sản phẩm
  */
-router.get('/', validateRequest(PaginationQueryDto, 'query'), wrappedProductController.getAll);
+router.get('/', validateRequest(ListProductReqDto, 'query'), wrappedProductController.getAll);
 /**
  * @swagger
  * /product/{id}:
@@ -195,4 +197,6 @@ router.post(
   uploadProductImage.single('image'),
   wrappedProductController.uploadImage,
 );
+
+router.get('/load-more', validateRequest(LoadMoreProductsReqDto, 'query'), wrappedProductController.loadMore);
 export default router;
