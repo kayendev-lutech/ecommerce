@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, Min, Max, Length, IsInt } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min, Max, Length, IsInt, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateVariantDto {
@@ -69,5 +69,16 @@ export class CreateVariantDto {
   attributes?: Record<string, any>;
 
   @IsOptional()
+  @IsBoolean()
   is_active?: boolean;
+
+  // Thêm các trường này:
+  @IsOptional()
+  @IsBoolean()
+  is_default?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  sort_order?: number;
 }

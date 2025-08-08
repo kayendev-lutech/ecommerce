@@ -12,11 +12,11 @@ export function validateVariantNames(variants: Partial<Variant>[]) {
 
 export function buildVariantData(
   variants: Partial<Variant>[],
-  product: Partial<Product> & { id: string },
+  product: Partial<Product> & { id: number }, 
 ): Partial<Variant>[] {
   return variants.map((v, i) => ({
     ...v,
-    product_id: product.id,
+    product_id: String(product.id),
     currency_code: v.currency_code || product.currency_code || 'VND',
     price: v.price ?? product.price ?? 0,
     is_default: v.is_default ?? i === 0,

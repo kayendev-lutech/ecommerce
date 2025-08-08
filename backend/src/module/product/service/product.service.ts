@@ -17,6 +17,7 @@ import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagina
 import { ListProductReqDto } from '@module/product/dto/list-product-req.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
 import { validateVariantNames, buildVariantData } from '../validate/product.validate';
+import { CreateProductDto } from '../dto/create-product.dto';
 
 export class ProductService {
   private productRepository = new ProductRepository();
@@ -27,15 +28,6 @@ export class ProductService {
   }
   /**
    * Retrieves a paginated list of products with optional search, sorting, and additional filters.
-   *
-   * @param params - The parameters for pagination and filtering.
-   * @param params.page - The page number to retrieve (optional).
-   * @param params.limit - The number of items per page (optional).
-   * @param params.search - A search query to filter products (optional).
-   * @param params.order - The order direction, either 'ASC' or 'DESC' (optional).
-   * @param params.sortBy - The field to sort by (optional).
-   * @param params.[key] - Additional filter parameters specific to the product entity.
-   * @returns A promise resolving to the paginated list of products.
    */
   async getAllWithPagination(
     reqDto: ListProductReqDto,
@@ -49,7 +41,7 @@ export class ProductService {
   /**
    * Get product by ID.
    */
-  async getById(id: string): Promise<Product | null> {
+  async getById(id: number): Promise<Product | null> {
     const product = Optional.of(await this.productRepository.findById(id))
       .throwIfNullable(new NotFoundException('Product not found'))
       .get() as Product;
@@ -61,7 +53,7 @@ export class ProductService {
   /**
    * Get product by ID or throw error if not found.
    */
-  async getByIdOrFail(id: string): Promise<Product> {
+  async getByIdOrFail(id: number): Promise<Product> {
     return Optional.of(await this.productRepository.findById(id))
       .throwIfNullable(new NotFoundException('Product not found'))
       .get() as Product;
@@ -73,7 +65,7 @@ export class ProductService {
    * @returns A promise that resolves to the created product with its associated variants.
    * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
    */
-  async create(data: Partial<Product> & { variants?: Partial<Variant>[] }): Promise<Product> {
+  async create(data: CreateProductDto): Promise<Product> {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -100,19 +92,16 @@ export class ProductService {
           queryRunner.manager.create(Variant, variantData),
         );
       } else {
-        const defaultVariant: Partial<Variant> = {
-          product_id: createdProduct.id,
+        const defaultVariant = queryRunner.manager.create(Variant, {
+          product: createdProduct,
           name: `${createdProduct.name} - Default`,
           price: createdProduct.price,
           currency_code: createdProduct.currency_code,
           stock: 0,
           is_default: true,
           is_active: true,
-        };
-
-        createdVariants = [
-          await queryRunner.manager.save(queryRunner.manager.create(Variant, defaultVariant)),
-        ];
+        });
+        createdVariants = [await queryRunner.manager.save(defaultVariant)];
       }
 
       createdProduct.variants = createdVariants;
@@ -129,7 +118,7 @@ export class ProductService {
   /**
    * Update product by ID.
    */
-  async update(id: string, data: Partial<Product>): Promise<Product> {
+  async update(id: number, data: Partial<Product>): Promise<Product> {
     await this.getByIdOrFail(id);
 
     if (data.slug) {
@@ -150,7 +139,7 @@ export class ProductService {
   /**
    * Delete product by ID.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: number): Promise<void> {
     await this.getByIdOrFail(id);
     await this.productRepository.deleteProduct(id);
   }
@@ -158,7 +147,7 @@ export class ProductService {
   /**
    * Update product image URL.
    */
-  async updateProductImage(id: string, imageUrl: string): Promise<Product> {
+  async updateProductImage(id: number, imageUrl: string): Promise<Product> {
     try {
       await this.getByIdOrFail(id);
 
@@ -180,29 +169,41 @@ export class ProductService {
   async loadMoreProducts(
     reqDto: LoadMoreProductsReqDto, 
   ): Promise<CursorPaginatedDto<ProductResDto>> {
+    console.log('LoadMoreProducts reqDto:', reqDto); 
+
     const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
     
+    const safeReqDto = {
+      limit: reqDto?.limit || 10,
+      afterCursor: reqDto?.afterCursor || null,
+      beforeCursor: reqDto?.beforeCursor || null,
+    };
+
+    console.log('SafeReqDto:', safeReqDto); 
+
     const paginator = buildPaginator({
       entity: Product,
       alias: 'product',
       paginationKeys: ['created_at'],
       query: {
-        limit: reqDto.limit,
+        limit: safeReqDto.limit, 
         order: 'DESC',
-        afterCursor: reqDto.afterCursor,
-        beforeCursor: reqDto.beforeCursor,
+        afterCursor: safeReqDto.afterCursor ?? undefined, 
+        beforeCursor: safeReqDto.beforeCursor ?? undefined, 
       },
     });
 
-    const { data, cursor } = await paginator.paginate(queryBuilder);
+    const { data = [], cursor } = await paginator.paginate(queryBuilder);
+
+    const products = Array.isArray(data) ? data : [];
 
     const metaDto = new CursorPaginationDto(
-      data.length,
+      products.length,
       cursor.afterCursor ?? '',
       cursor.beforeCursor ?? '',
       reqDto,
     );
 
-    return new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
+    return new CursorPaginatedDto(plainToInstance(ProductResDto, products), metaDto);
   }
 }

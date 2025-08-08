@@ -37,6 +37,9 @@ const wrappedProductController = new WrapperClass(
  *         description: Danh sách sản phẩm
  */
 router.get('/', validateRequest(ListProductReqDto, 'query'), wrappedProductController.getAll);
+
+
+router.get('/load-more', validateRequest(LoadMoreProductsReqDto, 'query'), wrappedProductController.loadMore);
 /**
  * @swagger
  * /product/{id}:
@@ -198,5 +201,4 @@ router.post(
   wrappedProductController.uploadImage,
 );
 
-router.get('/load-more', validateRequest(LoadMoreProductsReqDto, 'query'), wrappedProductController.loadMore);
 export default router;

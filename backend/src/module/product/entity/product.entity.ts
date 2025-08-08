@@ -5,7 +5,7 @@ import { Variant } from '@module/variant/entity/variant.entity';
 @Entity('products')
 export class Product extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'int' })
-  id!: string;
+  id!: number;
 
   @Column({ type: 'varchar' })
   name!: string;
@@ -26,7 +26,7 @@ export class Product extends BaseEntity {
   currency_code!: string;
 
   @Column({ type: 'int' })
-  category_id!: string;
+  category_id!: number;
 
   @Column({ type: 'varchar', nullable: true })
   image_url?: string;

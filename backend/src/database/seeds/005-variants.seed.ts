@@ -10,7 +10,7 @@ export const seedVariants = async () => {
 
   const variantTemplates = [
     (product: Product) => ({
-      product_id: product.id,
+      product_id: String(product.id),
       name: `${product.name} - Option 1`,
       price: Number(product.price),
       stock: 10,
@@ -18,7 +18,7 @@ export const seedVariants = async () => {
       is_active: true,
     }),
     (product: Product) => ({
-      product_id: product.id,
+      product_id: String(product.id),
       name: `${product.name} - Option 2`,
       price: Number(product.price) + 100,
       stock: 5,

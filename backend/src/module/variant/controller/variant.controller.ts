@@ -24,7 +24,7 @@ export class VariantController {
 
     return result;
   }
-
+  
   /**
    * Get variant by ID
    */

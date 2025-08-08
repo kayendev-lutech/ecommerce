@@ -3,13 +3,16 @@ import { ConflictException } from '@errors/app-error';
 import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
 import { Inject, Service } from 'typedi';
 import { CategoryRepository } from '@module/category/repository/category.respository';
+import { Container } from 'typedi';
 
 @Service()
 export class CategoryService {
-  constructor(
-    @Inject(() => CategoryRepository)
-    private readonly categoryRepository: CategoryRepository,
-  ) {}
+  private readonly categoryRepository: CategoryRepository;
+
+  constructor() {
+    this.categoryRepository = Container.get(CategoryRepository);
+  }
+
   /**
    * Retrieves all categories.
    * @returns Array of categories
@@ -87,9 +90,11 @@ export class CategoryService {
     const deleted = await this.categoryRepository.deleteCategory(id);
     ensureFound(deleted, 'Category not found');
   }
+
   async getByParentId(parentId: number): Promise<Category[]> {
     return this.categoryRepository.findByParentId(parentId);
   }
+
   /**
    * Updates a category's thumbnail image.
    * @param id Category ID

@@ -10,9 +10,9 @@ const router = Router();
 
 const categoryController = Container.get(CategoryController);
 
-// const wrappedCategoryController = new WrapperClass(
-//   categoryController,
-// ) as unknown as CategoryController & { [key: string]: any };
+const wrappedCategoryController = new WrapperClass(
+  categoryController,
+) as unknown as CategoryController & { [key: string]: any };
 /**
  * @swagger
  * /category:
@@ -24,7 +24,7 @@ const categoryController = Container.get(CategoryController);
  *       200:
  *         description: Danh sách danh mục
  */
-router.get('/', categoryController.getAll.bind(categoryController));
+router.get('/', wrappedCategoryController.getAll);
 
 /**
  * @swagger
@@ -44,7 +44,7 @@ router.get('/', categoryController.getAll.bind(categoryController));
  *       200:
  *         description: Thông tin danh mục
  */
-router.get('/:id', categoryController.getById.bind(categoryController));
+router.get('/:id', wrappedCategoryController.getById);
 
 /**
  * @swagger
@@ -75,7 +75,7 @@ router.get('/:id', categoryController.getById.bind(categoryController));
 router.post(
   '/',
   validateRequest(CreateCategoryDto),
-  categoryController.create.bind(categoryController),
+  wrappedCategoryController.create
 );
 
 /**
@@ -114,7 +114,7 @@ router.post(
 router.put(
   '/:id',
   validateRequest(UpdateCategoryDto),
-  categoryController.update.bind(categoryController),
+  wrappedCategoryController.update
 );
 
 /**
@@ -135,7 +135,7 @@ router.put(
  *       200:
  *         description: Danh mục đã được xóa
  */
-router.delete('/:id', categoryController.delete.bind(categoryController));
+router.delete('/:id', wrappedCategoryController.delete);
 /**
  * @swagger
  * /category/{id}/upload-image:

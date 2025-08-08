@@ -44,7 +44,7 @@ export class ProductRepository {
 
     return { data, total };
   }
-  async findById(id: string): Promise<Product | null> {
+  async findById(id: number): Promise<Product | null> {
     return this.repo.findOne({ where: { id } });
   }
   async findBySlug(slug: string): Promise<Product | null> {
@@ -55,12 +55,12 @@ export class ProductRepository {
     return this.repo.save(product);
   }
 
-  async updateProduct(id: string, data: Partial<Product>): Promise<Product | null> {
+  async updateProduct(id: number, data: Partial<Product>): Promise<Product | null> {
     await this.repo.update({ id }, data);
     return this.findById(id);
   }
 
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: number): Promise<void> {
     await this.repo.delete({ id });
   }
 }
