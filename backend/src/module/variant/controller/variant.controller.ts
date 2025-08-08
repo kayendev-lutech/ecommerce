@@ -2,7 +2,9 @@ import { WrappedRequest } from '@utils/wrapper.util';
 import { VariantService } from '@module/variant/service/variant.service';
 import { HttpResponse } from '@utils/http-response.util';
 import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
-import { VariantResDto } from '../dto/variant.res.dto';
+import { VariantResDto } from '@module/variant/dto/variant.res.dto';
+import { ListVariantReqDto } from '@module/variant/dto/list-variant-req.dto';
+import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
 
 export class VariantController {
   private variantService = new VariantService();
@@ -10,18 +12,30 @@ export class VariantController {
   /**
    * Get variants by product_id (required query param)
    */
-  async getAll({ query }: WrappedRequest): Promise<OffsetPaginatedDto<VariantResDto>> {
-    const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
-    
-    const result = await this.variantService.getAllWithPagination({
-      page: Number(page),
-      limit: Number(limit),
-      search: search ? String(search) : undefined,
-      order,
-      sortBy,
-      ...filters,
-    });
+  async getAll({ query }: WrappedRequest): Promise<CursorPaginatedDto<VariantResDto>> {
+    const {
+      limit = 10,
+      order = 'DESC',
+      afterCursor,
+      beforeCursor,
+      product_id,
+      search,
+      is_active,
+      is_default,
+    } = query;
 
+    const reqDto: ListVariantReqDto = {
+      limit: +limit,
+      order: order as 'ASC' | 'DESC',
+      afterCursor: afterCursor?.toString(),
+      beforeCursor: beforeCursor?.toString(),
+      product_id: product_id ? +product_id : undefined,
+      search: search?.toString(),
+      is_active: is_active,
+      is_default: is_default,
+    };
+
+    const result = await this.variantService.getAllWithPagination(reqDto);
     return result;
   }
   

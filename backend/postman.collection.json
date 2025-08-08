@@ -383,24 +383,53 @@
             "name": "Product",
             "item": [
                 {
-                    "name": "Get All Products",
+                    "name": "Get All Products (Offset)",
                     "request": {
                         "method": "GET",
                         "url": {
-                        "raw": "{{url}}/api/v1/product?page=1&limit=10&search=Anker&order=ASC&sortBy=name&category_id=1",
-                        "host": ["{{url}}"],
-                        "path": ["api", "v1", "product"],
-                        "query": [
-                            { "key": "page", "value": "1" },
-                            { "key": "limit", "value": "10" },
-                            { "key": "search", "value": "Anker" },
-                            { "key": "order", "value": "ASC" },
-                            { "key": "sortBy", "value": "name" },
-                            { "key": "category_id", "value": "1" }
-                        ]
+                            "raw": "{{url}}/api/v1/product?page=1&limit=10&search=Anker&order=ASC&sortBy=name&category_id=1",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product"],
+                            "query": [
+                                { "key": "page", "value": "1" },
+                                { "key": "limit", "value": "10" },
+                                { "key": "search", "value": "Anker" },
+                                { "key": "order", "value": "ASC" },
+                                { "key": "sortBy", "value": "name" },
+                                { "key": "category_id", "value": "1" }
+                            ]
                         }
                     }
-                    },
+                },
+                {
+                    "name": "Get Products (Cursor)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/product/load-more?limit=5",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product", "load-more"],
+                            "query": [
+                                { "key": "limit", "value": "5" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Products (Cursor - Next Page)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/product/load-more?limit=5&afterCursor=<AFTER_CURSOR>",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "product", "load-more"],
+                            "query": [
+                                { "key": "limit", "value": "5" },
+                                { "key": "afterCursor", "value": "<AFTER_CURSOR>" }
+                            ]
+                        }
+                    }
+                },
                 {
                     "name": "Get Product by ID",
                     "request": {
@@ -505,6 +534,22 @@
                                     "key": "product_id",
                                     "value": "1"
                                 }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Variants by Product ID (Cursor - Next Page)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{url}}/api/v1/variant?product_id=1&limit=2&afterCursor=<AFTER_CURSOR>",
+                            "host": ["{{url}}"],
+                            "path": ["api", "v1", "variant"],
+                            "query": [
+                                { "key": "product_id", "value": "1" },
+                                { "key": "limit", "value": "2" },
+                                { "key": "afterCursor", "value": "<AFTER_CURSOR>" }
                             ]
                         }
                     }

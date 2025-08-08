@@ -9,11 +9,11 @@ export class CursorPaginationDto {
 
   @ApiProperty()
   @Expose()
-  readonly afterCursor?: string;
+  readonly afterCursor: string;
 
   @ApiProperty()
   @Expose()
-  readonly beforeCursor?: string;
+  readonly beforeCursor: string;
 
   @ApiProperty()
   @Expose()
@@ -21,13 +21,13 @@ export class CursorPaginationDto {
 
   constructor(
     totalRecords: number,
-    afterCursor: string,
-    beforeCursor: string,
+    afterCursor: string | null | undefined,
+    beforeCursor: string | null | undefined,
     pageOptions: PageOptionsDto,
   ) {
     this.limit = pageOptions.limit ?? 10;
-    this.afterCursor = afterCursor;
-    this.beforeCursor = beforeCursor;
+    this.afterCursor = afterCursor ?? '';
+    this.beforeCursor = beforeCursor ?? '';
     this.totalRecords = totalRecords;
   }
 }

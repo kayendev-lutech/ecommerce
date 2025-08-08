@@ -1,4 +1,3 @@
-import { validate } from 'class-validator';
 import { ProductRepository } from '@module/product/repository/product.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
 import { ConflictException, NotFoundException } from '@errors/app-error.js';
@@ -28,6 +27,8 @@ export class ProductService {
   }
   /**
    * Retrieves a paginated list of products with optional search, sorting, and additional filters.
+   * @param reqDto ListProductReqDto containing pagination, search, sort, and filter options
+   * @returns OffsetPaginatedDto<ProductResDto>
    */
   async getAllWithPagination(
     reqDto: ListProductReqDto,
@@ -39,7 +40,9 @@ export class ProductService {
     return new OffsetPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
   }
   /**
-   * Get product by ID.
+   * Retrieves a product by its ID, including its variants.
+   * @param id Product ID
+   * @returns Product or throws NotFoundException if not found
    */
   async getById(id: number): Promise<Product | null> {
     const product = Optional.of(await this.productRepository.findById(id))
@@ -51,7 +54,9 @@ export class ProductService {
   }
 
   /**
-   * Get product by ID or throw error if not found.
+   * Retrieves a product by its ID or throws error if not found.
+   * @param id Product ID
+   * @returns Product
    */
   async getByIdOrFail(id: number): Promise<Product> {
     return Optional.of(await this.productRepository.findById(id))
@@ -73,10 +78,14 @@ export class ProductService {
     try {
       if (data.slug) {
         Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfPresent(
-          new ConflictException('Slug đã tồn tại. Vui lòng chọn slug khác.'),
+          new ConflictException('Slug is alredy exist.Please pick another slug'),
         );
       }
-
+      if (data.category_id) {
+        Optional.of(await this.productRepository.findByCategoryId(data.category_id)).throwIfNullable(
+          new NotFoundException('Id Category is null'),
+        );
+      }
       const { variants = [], ...productData } = data;
       const createdProduct = await queryRunner.manager.save(
         queryRunner.manager.create(Product, productData),
@@ -145,7 +154,10 @@ export class ProductService {
   }
 
   /**
-   * Update product image URL.
+   * Updates the image URL of a product.
+   * @param id Product ID
+   * @param imageUrl New image URL
+   * @returns Updated Product with variants
    */
   async updateProductImage(id: number, imageUrl: string): Promise<Product> {
     try {
@@ -166,6 +178,11 @@ export class ProductService {
       throw error;
     }
   }
+  /**
+   * Retrieves products using cursor-based pagination ("load more").
+   * @param reqDto LoadMoreProductsReqDto containing limit, afterCursor, beforeCursor
+   * @returns CursorPaginatedDto<ProductResDto>
+   */
   async loadMoreProducts(
     reqDto: LoadMoreProductsReqDto, 
   ): Promise<CursorPaginatedDto<ProductResDto>> {

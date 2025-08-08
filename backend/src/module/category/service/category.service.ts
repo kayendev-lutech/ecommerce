@@ -1,9 +1,12 @@
+import { UpdateCategoryDto } from './../dto/update-category.dto';
+import { CreateCategoryDto } from './../dto/create-category.dto';
 import { Category } from '@module/category/entity/category.entity';
-import { ConflictException } from '@errors/app-error';
+import { ConflictException, NotFoundException } from '@errors/app-error';
 import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
 import { Inject, Service } from 'typedi';
 import { CategoryRepository } from '@module/category/repository/category.respository';
 import { Container } from 'typedi';
+import { Optional } from '@utils/optional.utils';
 
 @Service()
 export class CategoryService {
@@ -36,12 +39,12 @@ export class CategoryService {
    * @returns Created category
    * @throws ConflictException if category with same slug already exists
    */
-  async create(data: Partial<Category>): Promise<Category> {
-    if (data.slug) {
-      const existingCategory = await this.categoryRepository.findBySlug(data.slug);
-      ensureNotExist(existingCategory, 'Category with this slug already exists');
+  async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
+    if (createCategoryDto.slug) {
+      Optional.of(await this.categoryRepository.findBySlug(createCategoryDto.slug))
+        .throwIfExist(new ConflictException('Category with this slug already exists'));
     }
-    return this.categoryRepository.createCategory(data);
+    return this.categoryRepository.createCategory(createCategoryDto);
   }
 
   /**
@@ -51,8 +54,9 @@ export class CategoryService {
    * @throws NotFoundException if category not found
    */
   async getByIdOrFail(id: string): Promise<Category> {
-    const category = await this.getById(id);
-    return ensureFound(category, 'Category not found');
+    return Optional.of(await this.getById(id))
+      .throwIfNullable(new NotFoundException('Category not found'))
+      .get() as Category;
   }
 
   /**
@@ -63,19 +67,20 @@ export class CategoryService {
    * @throws NotFoundException if category not found
    * @throws ConflictException if slug already exists
    */
-  async update(id: string, data: Partial<Category>): Promise<Category> {
+  async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
     await this.getByIdOrFail(id);
 
     // Check conflict
-    if (data.slug) {
-      const existingCategory = await this.categoryRepository.findBySlug(data.slug);
+    if (updateCategoryDto.slug) {
+      const existingCategory = await this.categoryRepository.findBySlug(updateCategoryDto.slug);
       if (existingCategory && existingCategory.id !== id) {
         throw new ConflictException('Category with this slug already exists');
       }
     }
 
-    const updated = await this.categoryRepository.updateCategory(id, data);
-    return ensureFound(updated, 'Category not found');
+    return Optional.of(await this.categoryRepository.updateCategory(id, updateCategoryDto))
+      .throwIfNullable(new NotFoundException('Category not found'))
+      .get() as Category;
   }
 
   /**
@@ -87,8 +92,8 @@ export class CategoryService {
     // Check if category exists first
     await this.getByIdOrFail(id);
 
-    const deleted = await this.categoryRepository.deleteCategory(id);
-    ensureFound(deleted, 'Category not found');
+    Optional.of(await this.categoryRepository.deleteCategory(id))
+      .throwIfNullable(new NotFoundException('Category not found'));
   }
 
   async getByParentId(parentId: number): Promise<Category[]> {

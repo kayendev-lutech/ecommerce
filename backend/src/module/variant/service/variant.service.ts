@@ -1,31 +1,89 @@
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
 import { ConflictException, NotFoundException } from '@errors/app-error';
-import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
+import { ensureFound } from '@utils/entity-check.util';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { Optional } from '@utils/optional.utils';
-import { ListVariantReqDto } from '../dto/list-variant-req.dto';
+import { ListVariantReqDto } from '@module/variant/dto/list-variant-req.dto';
 import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
-import { VariantResDto } from '../dto/variant.res.dto';
+import { VariantResDto } from '@module/variant/dto/variant.res.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
 import { plainToInstance } from 'class-transformer';
-import { ProductResDto } from '@module/product/dto/product.res.dto';
-import { CreateVariantDto } from '../dto/create-variant.dto';
-import { UpdateVariantDto } from '../dto/update-variant.dto';
+import { CreateVariantDto } from '@module/variant/dto/create-variant.dto';
+import { UpdateVariantDto } from '@module/variant/dto/update-variant.dto';
+import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
+import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
+import { buildPaginator } from '@utils/cursor-pagination';
 
 export class VariantService {
   private variantRepository = new VariantRepository();
   private productRepository = new ProductRepository();
 
+
+  // Using offset
+  // async getAllWithPagination(
+  //     reqDto: ListVariantReqDto,
+  //   ): Promise<OffsetPaginatedDto<VariantResDto>> {
+  //     const { data, total } = await this.variantRepository.findWithPagination(reqDto);
+      
+  //     const metaDto = new OffsetPaginationDto(total, reqDto);
+      
+  //     return new OffsetPaginatedDto(plainToInstance(VariantResDto, data), metaDto);
+  //   }
   async getAllWithPagination(
-      reqDto: ListVariantReqDto,
-    ): Promise<OffsetPaginatedDto<VariantResDto>> {
-      const { data, total } = await this.variantRepository.findWithPagination(reqDto);
-      
-      const metaDto = new OffsetPaginationDto(total, reqDto);
-      
-      return new OffsetPaginatedDto(plainToInstance(VariantResDto, data), metaDto);
+    reqDto: ListVariantReqDto,
+  ): Promise<CursorPaginatedDto<VariantResDto>> {
+    const queryBuilder = this.variantRepository.repository.createQueryBuilder('variant');
+
+    if (reqDto.product_id) {
+      queryBuilder.andWhere('variant.product_id = :product_id', { 
+        product_id: reqDto.product_id 
+      });
     }
+    if (reqDto.search && reqDto.search.trim() !== '') {
+      queryBuilder.andWhere('variant.name ILIKE :search', { 
+        search: `%${reqDto.search.trim()}%` 
+      });
+    }
+    if (reqDto.is_active !== undefined && reqDto.is_active !== null) {
+      queryBuilder.andWhere('variant.is_active = :is_active', { 
+        is_active: reqDto.is_active 
+      });
+    }
+    if (reqDto.is_default !== undefined && reqDto.is_default !== null) {
+      queryBuilder.andWhere('variant.is_default = :is_default', { 
+        is_default: reqDto.is_default 
+      });
+    }
+
+    const paginator = buildPaginator({
+      entity: Variant,
+      alias: 'variant',
+      paginationKeys: ['created_at', 'id'],
+      query: {
+        limit: reqDto.limit || 10,
+        order: reqDto.order || 'DESC',
+        afterCursor: reqDto.afterCursor,
+        beforeCursor: reqDto.beforeCursor,
+      },
+    });
+
+    const result = await paginator.paginate(queryBuilder);
+
+    const data = result?.data || [];
+    const cursor = result?.cursor || {};
+
+    const variants = Array.isArray(data) ? data : [];
+
+    const metaDto = new CursorPaginationDto(
+      variants.length,
+      cursor.afterCursor ?? '',
+      cursor.beforeCursor ?? '',
+      reqDto,
+    );
+
+    return new CursorPaginatedDto(plainToInstance(VariantResDto, variants), metaDto);
+  }
   /**
    * Get variant by ID or throw error if not found
    */

@@ -10,6 +10,7 @@ import {
   ConflictException,
   InternalServerErrorException,
 } from '@errors/app-error';
+import { Optional } from '@utils/optional.utils';
 
 export class AuthService {
   private authRepository: AuthRepository;
@@ -19,41 +20,36 @@ export class AuthService {
   }
 
   async register(createUserDto: RegisterUserDto, deviceId: string): Promise<any> {
-    try {
-      if (!createUserDto.email || !createUserDto.username) {
-        throw new BadRequestException('Email and username are required');
-      }
-      const existUser = await this.authRepository.findUserByEmailOrUsername(
-        createUserDto.email,
-        createUserDto.username,
-      );
-      if (existUser) {
-        throw new ConflictException('Username or email already exists');
-      }
-      const userWithRole = { ...createUserDto, role: 'user' };
-      const userDetails = await this.authRepository.createUser(userWithRole);
-      const payload = { userId: userDetails?.id };
-      const token = generateAccessToken(payload);
-      const refreshToken = generateRefreshToken(payload);
-
-      await this.authRepository.addToken({
-        user_id: payload.userId,
-        token: refreshToken,
-        type: 'refresh',
-        expires_at: dayjs().add(7, 'day').toDate(),
-        created_ip: '',
-        user_agent: deviceId,
-      });
-
-      return { token, refreshToken };
-    } catch (error: any) {
-      if (error instanceof AppError) throw error;
-      throw new InternalServerErrorException(error?.message || 'Failed to register user');
+    if (!createUserDto.email || !createUserDto.username) {
+      throw new BadRequestException('Email and username are required');
     }
+
+    Optional.of(await this.authRepository.findUserByEmailOrUsername(
+      createUserDto.email,
+      createUserDto.username,
+    )).throwIfExist(new ConflictException('Username or email already exists'));
+
+    const userWithRole = { ...createUserDto, role: 'user' };
+    const userDetails = await this.authRepository.createUser(userWithRole);
+    Optional.of(userDetails).throwIfNullable(new InternalServerErrorException('Failed to register user'));
+
+    const payload = { userId: userDetails?.id };
+    const token = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    await this.authRepository.addToken({
+      user_id: payload.userId,
+      token: refreshToken,
+      type: 'refresh',
+      expires_at: dayjs().add(7, 'day').toDate(),
+      created_ip: '',
+      user_agent: deviceId,
+    });
+
+    return { token, refreshToken };
   }
 
   async login(loginUserDto: LoginUserDto, deviceId: string): Promise<any> {
-    try {
       const { email, password } = loginUserDto;
       const userDetails = await this.authRepository.comparePassword(email, password);
 
@@ -80,10 +76,6 @@ export class AuthService {
         token: token,
         refreshToken: refreshToken,
       };
-    } catch (error: any) {
-      if (error instanceof AppError) throw error;
-      throw new InternalServerErrorException(error?.message || 'Failed to login');
-    }
   }
 
   async refresh(refreshToken: string, deviceId: string) {
