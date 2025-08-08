@@ -1,90 +1,209 @@
-import { Category } from '@module/category/entity/category.entity.js';
+import { validate } from 'class-validator';
 import { ProductRepository } from '@module/product/repository/product.respository.js';
-import { CategoryRepository } from '@module/category/repository/category.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
-import { AppError, ErrorCode, InternalServerErrorException } from '@errors/app-error.js';
+import { ConflictException, NotFoundException } from '@errors/app-error.js';
+import { VariantRepository } from '@module/variant/repository/variant.repository';
+import { Variant } from '@module/variant/entity/variant.entity';
+import { AppDataSource } from '@config/typeorm.config';
+import { Optional } from '@utils/optional.utils';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
+import { ProductResDto } from '@module/product/dto/product.res.dto';
+import { paginate } from '@utils/offset-pagination';
+import { plainToInstance } from 'class-transformer';
+import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
+import { LoadMoreProductsReqDto } from '@module/product/dto/load-more-products-req.dto';
+import { buildPaginator } from '@utils/cursor-pagination';
+import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
+import { ListProductReqDto } from '@module/product/dto/list-product-req.dto';
+import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
+import { validateVariantNames, buildVariantData } from '../validate/product.validate';
+import { CreateProductDto } from '../dto/create-product.dto';
 
 export class ProductService {
   private productRepository = new ProductRepository();
-  private categoryRepository = new CategoryRepository();
+  private variantRepository = new VariantRepository();
 
+  public getQueryBuilder(alias: string) {
+    return this.productRepository.repository.createQueryBuilder(alias);
+  }
+  /**
+   * Retrieves a paginated list of products with optional search, sorting, and additional filters.
+   */
   async getAllWithPagination(
-    page: number,
-    limit: number,
-    search?: string,
-    order: 'ASC' | 'DESC' = 'ASC',
-  ) {
-    try {
-      return await this.productRepository.findWithPagination(page, limit, search, order);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get products');
-    }
+    reqDto: ListProductReqDto,
+  ): Promise<OffsetPaginatedDto<ProductResDto>> {
+    const { data, total } = await this.productRepository.findWithPagination(reqDto);
+    
+    const metaDto = new OffsetPaginationDto(total, reqDto);
+    
+    return new OffsetPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
+  }
+  /**
+   * Get product by ID.
+   */
+  async getById(id: number): Promise<Product | null> {
+    const product = Optional.of(await this.productRepository.findById(id))
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get() as Product;
+
+    product.variants = await this.variantRepository.findByProductId(id);
+    return product;
   }
 
-  async getById(id: string): Promise<Product | null> {
-    try {
-      return await this.productRepository.findById(id);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get product');
-    }
+  /**
+   * Get product by ID or throw error if not found.
+   */
+  async getByIdOrFail(id: number): Promise<Product> {
+    return Optional.of(await this.productRepository.findById(id))
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get() as Product;
   }
+  /**
+   * Creates a new product along with its variants in a transactional manner.
+   *
+   * @param data - Partial product data, optionally including an array of variant data.
+   * @returns A promise that resolves to the created product with its associated variants.
+   * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
+   */
+  async create(data: CreateProductDto): Promise<Product> {
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-  async getByIdOrFail(id: string): Promise<Product> {
     try {
-      const product = await this.productRepository.findById(id);
-      if (!product) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Product not found');
+      if (data.slug) {
+        Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfPresent(
+          new ConflictException('Slug đã tồn tại. Vui lòng chọn slug khác.'),
+        );
       }
+
+      const { variants = [], ...productData } = data;
+      const createdProduct = await queryRunner.manager.save(
+        queryRunner.manager.create(Product, productData),
+      );
+
+      let createdVariants: Variant[];
+
+      if (variants.length > 0) {
+        validateVariantNames(variants);
+
+        const variantData = buildVariantData(variants, createdProduct);
+        createdVariants = await queryRunner.manager.save(
+          queryRunner.manager.create(Variant, variantData),
+        );
+      } else {
+        const defaultVariant = queryRunner.manager.create(Variant, {
+          product: createdProduct,
+          name: `${createdProduct.name} - Default`,
+          price: createdProduct.price,
+          currency_code: createdProduct.currency_code,
+          stock: 0,
+          is_default: true,
+          is_active: true,
+        });
+        createdVariants = [await queryRunner.manager.save(defaultVariant)];
+      }
+
+      createdProduct.variants = createdVariants;
+
+      await queryRunner.commitTransaction();
+      return createdProduct;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+  /**
+   * Update product by ID.
+   */
+  async update(id: number, data: Partial<Product>): Promise<Product> {
+    await this.getByIdOrFail(id);
+
+    if (data.slug) {
+      Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfExist(
+        new ConflictException('Slug already exists. Please choose another slug.'),
+      );
+    }
+
+    const updated = await this.productRepository.updateProduct(id, data);
+    const product = Optional.of(updated)
+      .throwIfNullable(new NotFoundException('Product not found after update attempt'))
+      .get() as Product;
+
+    product.variants = await this.variantRepository.findByProductId(id);
+    return product;
+  }
+
+  /**
+   * Delete product by ID.
+   */
+  async delete(id: number): Promise<void> {
+    await this.getByIdOrFail(id);
+    await this.productRepository.deleteProduct(id);
+  }
+
+  /**
+   * Update product image URL.
+   */
+  async updateProductImage(id: number, imageUrl: string): Promise<Product> {
+    try {
+      await this.getByIdOrFail(id);
+
+      const updated = await this.productRepository.updateProduct(id, {
+        image_url: imageUrl,
+      });
+
+      const product = Optional.of(updated)
+        .throwIfNullable(new NotFoundException('Product not found after update attempt'))
+        .get() as Product;
+
+      product.variants = await this.variantRepository.findByProductId(id);
       return product;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get product');
+    } catch (error) {
+      console.error('Update product image error:', error);
+      throw error;
     }
   }
+  async loadMoreProducts(
+    reqDto: LoadMoreProductsReqDto, 
+  ): Promise<CursorPaginatedDto<ProductResDto>> {
+    console.log('LoadMoreProducts reqDto:', reqDto); 
 
-  async create(data: Partial<Product>): Promise<Product> {
-    try {
-      if (!data.category_id) {
-        throw new AppError(ErrorCode.VALIDATION, 400, 'category_id is required');
-      }
-      const category = await this.categoryRepository.findById(data.category_id as string);
-      if (!category) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Category not found');
-      }
-      return await this.productRepository.createProduct(data);
-    } catch (error: any) {
-      if (error?.code === '23505') {
-        throw new AppError(ErrorCode.CONFLICT, 409, 'Product already exists');
-      }
-      throw new InternalServerErrorException(error?.message || 'Failed to create product');
-    }
-  }
+    const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
+    
+    const safeReqDto = {
+      limit: reqDto?.limit || 10,
+      afterCursor: reqDto?.afterCursor || null,
+      beforeCursor: reqDto?.beforeCursor || null,
+    };
 
-  async update(id: string, data: Partial<Product>): Promise<Product> {
-    try {
-      const updated = await this.productRepository.updateProduct(id, data);
-      if (!updated) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Product not found');
-      }
-      return updated;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to update product');
-    }
-  }
+    console.log('SafeReqDto:', safeReqDto); 
 
-  async delete(id: string): Promise<void> {
-    try {
-      await this.productRepository.deleteProduct(id);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to delete product');
-    }
-  }
-  async uploadImage(id: string, imageUrl: string) {
-    try {
-      // Cập nhật trường image_url cho product
-      const updated = await this.update(id, { image_url: imageUrl });
-      return updated;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to upload product image');
-    }
+    const paginator = buildPaginator({
+      entity: Product,
+      alias: 'product',
+      paginationKeys: ['created_at'],
+      query: {
+        limit: safeReqDto.limit, 
+        order: 'DESC',
+        afterCursor: safeReqDto.afterCursor ?? undefined, 
+        beforeCursor: safeReqDto.beforeCursor ?? undefined, 
+      },
+    });
+
+    const { data = [], cursor } = await paginator.paginate(queryBuilder);
+
+    const products = Array.isArray(data) ? data : [];
+
+    const metaDto = new CursorPaginationDto(
+      products.length,
+      cursor.afterCursor ?? '',
+      cursor.beforeCursor ?? '',
+      reqDto,
+    );
+
+    return new CursorPaginatedDto(plainToInstance(ProductResDto, products), metaDto);
   }
 }
