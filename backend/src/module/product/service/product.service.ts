@@ -1,90 +1,176 @@
-import { Category } from '@module/category/entity/category.entity.js';
 import { ProductRepository } from '@module/product/repository/product.respository.js';
-import { CategoryRepository } from '@module/category/repository/category.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
-import { AppError, ErrorCode, InternalServerErrorException } from '@errors/app-error.js';
+import { ConflictException } from '@errors/app-error.js';
+import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
+import { VariantRepository } from '@module/variant/repository/variant.repository';
+import { Variant } from '@module/variant/entity/variant.entity';
+import { AppDataSource } from '@config/typeorm.config';
 
 export class ProductService {
   private productRepository = new ProductRepository();
-  private categoryRepository = new CategoryRepository();
-
-  async getAllWithPagination(
-    page: number,
-    limit: number,
-    search?: string,
-    order: 'ASC' | 'DESC' = 'ASC',
-  ) {
-    try {
-      return await this.productRepository.findWithPagination(page, limit, search, order);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get products');
-    }
+  private variantRepository = new VariantRepository();
+  /**
+   * Retrieves a paginated list of products with optional search, sorting, and additional filters.
+   *
+   * @param params - The parameters for pagination and filtering.
+   * @param params.page - The page number to retrieve (optional).
+   * @param params.limit - The number of items per page (optional).
+   * @param params.search - A search query to filter products (optional).
+   * @param params.order - The order direction, either 'ASC' or 'DESC' (optional).
+   * @param params.sortBy - The field to sort by (optional).
+   * @param params.[key] - Additional filter parameters specific to the product entity.
+   * @returns A promise resolving to the paginated list of products.
+   */
+  async getAllWithPagination(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    order?: 'ASC' | 'DESC';
+    sortBy?: string;
+    [key: string]: any;
+  }) {
+    return this.productRepository.findWithPagination(params);
+  }
+  /**
+   * Get product by ID.
+   */
+  async getById(id: string): Promise<(Product & { variants: Variant[] }) | null> {
+    const product = await this.productRepository.findById(id);
+    ensureFound(product, 'Product not found');
+    const variants = await this.variantRepository.findByProductId(id);
+    return { ...(product as Product), variants };
   }
 
-  async getById(id: string): Promise<Product | null> {
-    try {
-      return await this.productRepository.findById(id);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get product');
-    }
-  }
-
+  /**
+   * Get product by ID or throw error if not found.
+   */
   async getByIdOrFail(id: string): Promise<Product> {
+    const product = await this.productRepository.findById(id);
+    return ensureFound(product, 'Product not found');
+  }
+  /**
+   * Creates a new product along with its variants in a transactional manner.
+  *
+  * @param data - Partial product data, optionally including an array of variant data.
+   * @returns A promise that resolves to the created product with its associated variants.
+   * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
+   */
+  async create(
+    data: Partial<Product> & { variants?: Partial<Variant>[] },
+  ): Promise<Product & { variants: Variant[] }> {
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const product = await this.productRepository.findById(id);
-      if (!product) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Product not found');
+      if (data.slug) {
+        ensureNotExist(
+          await this.productRepository.findBySlug(data.slug),
+          'Slug đã tồn tại. Vui lòng chọn slug khác.',
+        );
       }
-      return product;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to get product');
+
+      const { variants = [], ...productData } = data;
+      const createdProduct = await queryRunner.manager.save(
+        queryRunner.manager.create(Product, productData),
+      );
+
+      let createdVariants: Variant[];
+
+      if (variants.length > 0) {
+        this.validateVariantNames(variants);
+
+        const variantData = this.buildVariantData(variants, createdProduct);
+        createdVariants = await queryRunner.manager.save(
+          queryRunner.manager.create(Variant, variantData),
+        );
+      } else {
+        const defaultVariant: Partial<Variant> = {
+          product_id: createdProduct.id,
+          name: `${createdProduct.name} - Default`,
+          price: createdProduct.price,
+          currency_code: createdProduct.currency_code,
+          stock: 0,
+          is_default: true,
+          is_active: true,
+        };
+
+        createdVariants = [
+          await queryRunner.manager.save(queryRunner.manager.create(Variant, defaultVariant)),
+        ];
+      }
+
+      await queryRunner.commitTransaction();
+      return { ...createdProduct, variants: createdVariants };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
   }
-
-  async create(data: Partial<Product>): Promise<Product> {
-    try {
-      if (!data.category_id) {
-        throw new AppError(ErrorCode.VALIDATION, 400, 'category_id is required');
-      }
-      const category = await this.categoryRepository.findById(data.category_id as string);
-      if (!category) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Category not found');
-      }
-      return await this.productRepository.createProduct(data);
-    } catch (error: any) {
-      if (error?.code === '23505') {
-        throw new AppError(ErrorCode.CONFLICT, 409, 'Product already exists');
-      }
-      throw new InternalServerErrorException(error?.message || 'Failed to create product');
-    }
-  }
-
+  /**
+   * Update product by ID.
+   */
   async update(id: string, data: Partial<Product>): Promise<Product> {
-    try {
-      const updated = await this.productRepository.updateProduct(id, data);
-      if (!updated) {
-        throw new AppError(ErrorCode.NOT_FOUND, 404, 'Product not found');
+    await this.getByIdOrFail(id);
+
+    if (data.slug) {
+      const existingProduct = await this.productRepository.findBySlug(data.slug);
+      if (existingProduct && existingProduct.id !== id) {
+        throw new ConflictException('Slug already exists. Please choose another slug.');
       }
-      return updated;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to update product');
     }
+
+    const updated = await this.productRepository.updateProduct(id, data);
+    return ensureFound(updated, 'Product not found after update attempt');
   }
 
+  /**
+   * Delete product by ID.
+   */
   async delete(id: string): Promise<void> {
+    await this.getByIdOrFail(id);
+    await this.productRepository.deleteProduct(id);
+  }
+
+  /**
+   * Update product image URL.
+   */
+  async updateProductImage(id: string, imageUrl: string): Promise<Product> {
     try {
-      await this.productRepository.deleteProduct(id);
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to delete product');
+      // Ensure product exists
+      await this.getByIdOrFail(id);
+
+      // Update product with new image URL
+      const updated = await this.productRepository.updateProduct(id, {
+        image_url: imageUrl,
+      });
+
+      return ensureFound(updated, 'Product not found after update attempt');
+    } catch (error) {
+      console.error('Update product image error:', error);
+      throw error;
     }
   }
-  async uploadImage(id: string, imageUrl: string) {
-    try {
-      // Cập nhật trường image_url cho product
-      const updated = await this.update(id, { image_url: imageUrl });
-      return updated;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error?.message || 'Failed to upload product image');
+  private validateVariantNames(variants: Partial<Variant>[]) {
+    const names = variants.map((v) => v.name?.trim()).filter(Boolean);
+    const uniqueNames = new Set(names);
+    if (uniqueNames.size !== names.length) {
+      throw new ConflictException('Variant names within the same product must be unique.');
     }
+  }
+  private buildVariantData(
+    variants: Partial<Variant>[],
+    product: Partial<Product> & { id: string },
+  ): Partial<Variant>[] {
+    return variants.map((v, i) => ({
+      ...v,
+      product_id: product.id,
+      currency_code: v.currency_code || product.currency_code || 'VND',
+      price: v.price ?? product.price ?? 0,
+      is_default: v.is_default ?? i === 0,
+      sort_order: v.sort_order ?? i,
+    }));
   }
 }

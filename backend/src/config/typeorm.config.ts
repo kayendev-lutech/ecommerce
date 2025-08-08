@@ -1,3 +1,8 @@
+/**
+ * TypeORM DataSource configuration for PostgreSQL.
+ * Loads connection settings from environment variables and sets up
+ * entities and migrations paths based on NODE_ENV (production or development).
+ */
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { dbHost, dbPort, dbName, dbUser, dbPassword } from '../constants/env.constants.js';

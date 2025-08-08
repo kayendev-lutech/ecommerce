@@ -7,6 +7,7 @@ import AsyncErrorBoundary from '@/components/AsyncErrorBoundary.vue'
 import AdminLayout from '@/layouts/admin/index.vue'
 import AuthLayout from '@/layouts/auth/index.vue'
 import DefaultLayout from '@/layouts/empty/index.vue'
+import Toaster from '@/components/ui/toast/Toaster.vue'
 import LandingLayout from '@/layouts/landing-page/index.vue'
 import { markRaw, ref, watch } from 'vue'
 
@@ -47,6 +48,7 @@ watch(
             </component>
         </Transition>
     </ConfigProvider>
+    <Toaster />
 </template>
 
 <style scoped>

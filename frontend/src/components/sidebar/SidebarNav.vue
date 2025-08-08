@@ -42,11 +42,11 @@ const handleSelect = (event: { key: string }) => {
                         </template>
                     </SidebarMenuItem>
                     <SidebarMenuItem
-                        to="/admin/product/sub1"
-                        :is-active="selectedKeys.includes('/admin/product/sub1')"
+                        to="/admin/product/create"
+                        :is-active="selectedKeys.includes('/admin/product/create')"
                         :is-collapsed="isCollapsed"
                         is-submenu-item
-                        @click="handleChildSelect('/admin/product/sub1')"
+                        @click="handleChildSelect('/admin/product/create')"
                     >
                         <template #icon>
                             <PlusCircle class="h-4 w-4" />
@@ -82,11 +82,11 @@ const handleSelect = (event: { key: string }) => {
                         </template>
                     </SidebarMenuItem>
                     <SidebarMenuItem
-                        to="/admin/category/sub1"
-                        :is-active="selectedKeys.includes('/admin/category/sub1')"
+                        to="/admin/category/create"
+                        :is-active="selectedKeys.includes('/admin/category/create')"
                         :is-collapsed="isCollapsed"
                         is-submenu-item
-                        @click="handleChildSelect('/admin/category/sub1')"
+                        @click="handleChildSelect('/admin/category/create')"
                     >
                         <template #icon>
                             <PlusCircle class="h-4 w-4" />

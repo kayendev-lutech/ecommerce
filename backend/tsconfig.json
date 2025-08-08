@@ -23,7 +23,8 @@
       "@logger/*": ["src/logger/*"],
       "@types/*": ["src/types/*"],
       "@errors/*": ["src/errors/*"],
-      "@common/*": ["src/common/*"]
+      "@common/*": ["src/common/*"],
+      "@container/*": ["src/container/*"]
     }
   },
   "include": ["src/**/*", "src/swagger.config.ts"],

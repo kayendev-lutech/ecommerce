@@ -1,11 +1,13 @@
 import { WrapperClass } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { ProductController } from '@module/product/controller/product.controller';
-// validate dto
+// Validate dto
 import { validateRequest } from '@middlewares/dto-validator';
 import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
-import { IdParamDto } from './dto/id-param.dto';
+import { UpdateProductDto } from '@module/product/dto/update-product.dto';
+import { CreateProductDto } from '@module/product/dto/create-product.dto';
+import { IdParamDto } from '@module/product/dto/id-param.dto';
 const router = Router();
 const wrappedProductController = new WrapperClass(
   new ProductController(),
@@ -65,20 +67,42 @@ router.get('/:id', validateRequest(IdParamDto, 'params'), wrappedProductControll
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - slug
+ *               - price
+ *               - category_id
  *             properties:
  *               name:
  *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 100
  *               slug:
  *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
  *               price:
  *                 type: number
+ *                 minimum: 0.01
+ *                 maximum: 999999.99
+ *               discount_price:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999999.99
+ *               currency_code:
+ *                 type: string
+ *                 default: "VND"
  *               category_id:
  *                 type: integer
+ *                 minimum: 1
  *     responses:
  *       201:
  *         description: Sản phẩm đã được tạo
  */
-router.post('/', wrappedProductController.create);
+router.post('/', validateRequest(CreateProductDto), wrappedProductController.create);
 /**
  * @swagger
  * /product/{id}:
@@ -112,7 +136,12 @@ router.post('/', wrappedProductController.create);
  *       200:
  *         description: Sản phẩm đã được cập nhật
  */
-router.put('/:id', wrappedProductController.update);
+router.put(
+  '/:id',
+  validateRequest(IdParamDto, 'params'),
+  validateRequest(UpdateProductDto, 'body'),
+  wrappedProductController.update,
+);
 /**
  * @swagger
  * /product/{id}:
@@ -160,15 +189,10 @@ router.delete('/:id', wrappedProductController.delete);
  *       200:
  *         description: Ảnh đã được upload thành công
  */
-router.post('/:id/upload-image', uploadProductImage.single('image'), async (req, res, next) => {
-  try {
-    // req.file.path là url cloudinary
-    // Truyền imageUrl vào body để controller xử lý
-    req.body.fileUrl = (req.file as any)?.path;
-    // Gọi controller uploadImage
-    await wrappedProductController.uploadImage(req, res, next);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post(
+  '/:id/upload-image',
+  validateRequest(IdParamDto, 'params'),
+  uploadProductImage.single('image'),
+  wrappedProductController.uploadImage,
+);
 export default router;
