@@ -4,6 +4,7 @@ import { UserController } from '@module/user/controller/user.controller';
 import authMiddleware from '@middlewares/auth.middleware';
 import { UpdateUserDto } from '@module/user/dto/update-user.dto';
 import { validateRequest } from '@middlewares/dto-validator';
+import { ListUserReqDto } from './dto/list-user-req.dto';
 
 const router = Router();
 const wrappedUserController = new WrapperClass(
@@ -23,7 +24,7 @@ const wrappedUserController = new WrapperClass(
  *       200:
  *         description: Danh sách người dùng
  */
-router.get('/', authMiddleware, wrappedUserController.getAll);
+router.get('/', authMiddleware,validateRequest(ListUserReqDto, 'query'), wrappedUserController.getAll);
 
 /**
  * @swagger

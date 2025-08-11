@@ -259,11 +259,12 @@ export default class Paginator<Entity extends ObjectLiteral> {
   }
 
   private getEntityPropertyType(key: string): string {
-    return Reflect.getMetadata(
-      'design:type',
-      this.entity.prototype,
-      key,
-    ).name.toLowerCase();
+    const metadata = Reflect.getMetadata('design:type', this.entity.prototype, key);
+    if (!metadata) {
+      console.warn(`No metadata found for key: ${key} in entity: ${this.entity.name}`);
+      return 'string'; // fallback default
+    }
+    return metadata.name.toLowerCase();
   }
 
   private flipOrder(order: Order): Order {

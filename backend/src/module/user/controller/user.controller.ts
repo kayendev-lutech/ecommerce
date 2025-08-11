@@ -3,6 +3,8 @@ import { UserService } from '@module/user/service/user.service';
 import { AppError, ErrorCode } from '@errors/app-error';
 import { instanceToPlain } from 'class-transformer';
 import { HttpResponse } from '@utils/http-response.util';
+import { UserResDto } from '../dto/user.res.dto';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
 
 export class UserController {
   private userService: UserService;
@@ -24,13 +26,20 @@ export class UserController {
     return HttpResponse.ok(instanceToPlain(user), 'User retrieved successfully');
   }
 
-  async getAll(): Promise<any> {
-    const users = await this.userService.getAll();
-    return HttpResponse.ok(
-      users.map((u) => instanceToPlain(u)),
-      'Users retrieved successfully',
-    );
-  }
+  async getAll({ query }: WrappedRequest): Promise<OffsetPaginatedDto<UserResDto>> {
+      const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
+      
+      const result = await this.userService.getAllWithPagination({
+        page: Number(page),
+        limit: Number(limit),
+        search: search ? String(search) : undefined,
+        order,
+        sortBy,
+        ...filters,
+      });
+  
+      return result;
+    }
 
   async createUser({ body }: WrappedRequest) {
     const created = await this.userService.createUser(body);

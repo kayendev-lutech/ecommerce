@@ -7,6 +7,11 @@ import {
 } from '@errors/app-error';
 import { RegisterUserDto } from '@module/authentication/dto/register.dto';
 import { Optional } from '@utils/optional.utils';
+import { ListUserReqDto } from '../dto/list-user-req.dto';
+import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
+import { UserResDto } from '../dto/user.res.dto';
+import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
+import { plainToInstance } from 'class-transformer';
 export class UserService {
   private userRepository: UserRepository;
 
@@ -19,10 +24,23 @@ export class UserService {
       .throwIfNullable(new NotFoundException('User not found'))
       .get() as User;
   }
-
-  async getAll(): Promise<User[]> {
-    return await this.userRepository.findAll();
-  }
+  /**
+     * Retrieves a paginated list of products with optional search, sorting, and additional filters.
+     * @param reqDto ListProductReqDto containing pagination, search, sort, and filter options
+     * @returns OffsetPaginatedDto<ProductResDto>
+     */
+    async getAllWithPagination(
+      reqDto: ListUserReqDto,
+    ): Promise<OffsetPaginatedDto<UserResDto>> {
+      const { data, total } = await this.userRepository.findWithPagination(reqDto);
+      
+      const metaDto = new OffsetPaginationDto(total, reqDto);
+      
+      return new OffsetPaginatedDto(plainToInstance(UserResDto, data), metaDto);
+    }
+  // async getAll(): Promise<User[]> {
+  //   return await this.userRepository.findAll();
+  // }
 
   async getById(id: string): Promise<User | null> {
     return Optional.of(await this.userRepository.me(id))

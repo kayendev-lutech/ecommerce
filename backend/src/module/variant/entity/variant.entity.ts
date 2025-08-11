@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
 import { Product } from '@module/product/entity/product.entity';
+import { CurrencyCode } from '@module/product/entity/product.enum';
 
 @Entity('variants')
 export class Variant extends BaseEntity {
@@ -25,7 +26,7 @@ export class Variant extends BaseEntity {
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   discount_price?: number;
 
-  @Column({ type: 'varchar', default: 'VND' })
+  @Column({ type: 'enum', enum: CurrencyCode, default: CurrencyCode.VND })
   currency_code?: string;
 
   @Column({ type: 'int', default: 0 })

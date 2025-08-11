@@ -19,71 +19,88 @@ export class VariantService {
   private variantRepository = new VariantRepository();
   private productRepository = new ProductRepository();
 
-
-  // Using offset
-  // async getAllWithPagination(
-  //     reqDto: ListVariantReqDto,
-  //   ): Promise<OffsetPaginatedDto<VariantResDto>> {
-  //     const { data, total } = await this.variantRepository.findWithPagination(reqDto);
-      
-  //     const metaDto = new OffsetPaginationDto(total, reqDto);
-      
-  //     return new OffsetPaginatedDto(plainToInstance(VariantResDto, data), metaDto);
-  //   }
   async getAllWithPagination(
     reqDto: ListVariantReqDto,
   ): Promise<CursorPaginatedDto<VariantResDto>> {
-    const queryBuilder = this.variantRepository.repository.createQueryBuilder('variant');
-
-    if (reqDto.product_id) {
-      queryBuilder.andWhere('variant.product_id = :product_id', { 
-        product_id: reqDto.product_id 
+    try {
+      const queryBuilder = this.variantRepository.repository.createQueryBuilder('variant');
+      
+      if (reqDto.product_id) {
+        queryBuilder.andWhere('variant.product_id = :product_id', { 
+          product_id: reqDto.product_id 
+        });
+      }
+      
+      if (reqDto.search && reqDto.search.trim() !== '') {
+        queryBuilder.andWhere('variant.name ILIKE :search', { 
+          search: `%${reqDto.search.trim()}%` 
+        });
+      }
+      
+      if (reqDto.is_active !== undefined && reqDto.is_active !== null) {
+        queryBuilder.andWhere('variant.is_active = :is_active', { 
+          is_active: reqDto.is_active 
+        });
+      }
+      
+      if (reqDto.is_default !== undefined && reqDto.is_default !== null) {
+        queryBuilder.andWhere('variant.is_default = :is_default', { 
+          is_default: reqDto.is_default 
+        });
+      }
+      const paginator = buildPaginator({
+        entity: Variant,
+        alias: 'variant',
+        paginationKeys: ['id'],
+        query: {
+          limit: reqDto.limit || 10,
+          order: reqDto.order || 'DESC',
+          afterCursor: reqDto.afterCursor,
+          beforeCursor: reqDto.beforeCursor,
+        },
       });
+
+      const result = await paginator.paginate(queryBuilder);
+
+      let data: Variant[] = [];
+      let cursor: { afterCursor: string | null; beforeCursor: string | null } = { 
+        afterCursor: null, 
+        beforeCursor: null 
+      };
+
+      if (result && typeof result === 'object') {
+        data = Array.isArray(result.data) ? result.data : [];
+        cursor = {
+          afterCursor: result.cursor?.afterCursor ?? null,
+          beforeCursor: result.cursor?.beforeCursor ?? null
+        };
+      }
+
+      const metaDto = new CursorPaginationDto(
+        data.length,
+        cursor.afterCursor ?? '',
+        cursor.beforeCursor ?? '',
+        reqDto,
+      );
+
+      let transformedVariants: VariantResDto[] = [];
+      try {
+        transformedVariants = plainToInstance(VariantResDto, data);
+      } catch (transformError: any) {
+        console.error('Transform error:', transformError);
+        console.error('Data causing error:', data);
+        throw new Error(`Data transformation failed: ${transformError?.message || 'Unknown error'}`);
+      }
+
+      return new CursorPaginatedDto(transformedVariants, metaDto);
+      
+    } catch (error: any) {
+      console.error('getAllWithPagination error:', error);
+      console.error('Error stack:', error?.stack);
+      throw error;
     }
-    if (reqDto.search && reqDto.search.trim() !== '') {
-      queryBuilder.andWhere('variant.name ILIKE :search', { 
-        search: `%${reqDto.search.trim()}%` 
-      });
-    }
-    if (reqDto.is_active !== undefined && reqDto.is_active !== null) {
-      queryBuilder.andWhere('variant.is_active = :is_active', { 
-        is_active: reqDto.is_active 
-      });
-    }
-    if (reqDto.is_default !== undefined && reqDto.is_default !== null) {
-      queryBuilder.andWhere('variant.is_default = :is_default', { 
-        is_default: reqDto.is_default 
-      });
-    }
-
-    const paginator = buildPaginator({
-      entity: Variant,
-      alias: 'variant',
-      paginationKeys: ['created_at', 'id'],
-      query: {
-        limit: reqDto.limit || 10,
-        order: reqDto.order || 'DESC',
-        afterCursor: reqDto.afterCursor,
-        beforeCursor: reqDto.beforeCursor,
-      },
-    });
-
-    const result = await paginator.paginate(queryBuilder);
-
-    const data = result?.data || [];
-    const cursor = result?.cursor || {};
-
-    const variants = Array.isArray(data) ? data : [];
-
-    const metaDto = new CursorPaginationDto(
-      variants.length,
-      cursor.afterCursor ?? '',
-      cursor.beforeCursor ?? '',
-      reqDto,
-    );
-
-    return new CursorPaginatedDto(plainToInstance(VariantResDto, variants), metaDto);
   }
+
   /**
    * Get variant by ID or throw error if not found
    */
@@ -92,15 +109,17 @@ export class VariantService {
       .throwIfNullable(new NotFoundException('Variant not found'))
       .get() as Variant;
   }
+
   /**
    * Get all variants for a specific product
    */
   async getByProductId(id: number): Promise<Variant[]> {
-    const product = await this.productRepository.findById(id);
-    ensureFound(product, 'Product not found');
-
+    Optional.of(await this.productRepository.findById(id))
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get();
     return this.variantRepository.findByProductId(id);
   }
+
   /**
    * Update variant by ID
    */
@@ -131,6 +150,7 @@ export class VariantService {
       .throwIfNullable(new NotFoundException('Variant not found after update attempt'))
       .get() as Variant;
   }
+
   /**
    * Create a new variant for a product
    * @param data Thông tin biến thể
@@ -166,6 +186,7 @@ export class VariantService {
 
     return this.variantRepository.createVariant(variantData);
   }
+
   /**
    * Delete variant by ID
    * Note: When deleting a product, all variants are automatically deleted via CASCADE

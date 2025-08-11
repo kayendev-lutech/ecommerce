@@ -186,8 +186,6 @@ export class ProductService {
   async loadMoreProducts(
     reqDto: LoadMoreProductsReqDto, 
   ): Promise<CursorPaginatedDto<ProductResDto>> {
-    console.log('LoadMoreProducts reqDto:', reqDto); 
-
     const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
     
     const safeReqDto = {
@@ -195,8 +193,6 @@ export class ProductService {
       afterCursor: reqDto?.afterCursor || null,
       beforeCursor: reqDto?.beforeCursor || null,
     };
-
-    console.log('SafeReqDto:', safeReqDto); 
 
     const paginator = buildPaginator({
       entity: Product,
@@ -210,7 +206,11 @@ export class ProductService {
       },
     });
 
-    const { data = [], cursor } = await paginator.paginate(queryBuilder);
+    const result = await paginator.paginate(queryBuilder);
+    console.log('Paginator result:', result);
+
+    const data = result?.data ?? [];
+    const cursor = result?.cursor ?? {};
 
     const products = Array.isArray(data) ? data : [];
 
