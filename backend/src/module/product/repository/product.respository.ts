@@ -24,17 +24,19 @@ export class ProductRepository {
 
     const qb = this.repo.createQueryBuilder('product');
 
-    if (search) {
+    if (search?.trim()) {
       qb.andWhere('product.name LIKE :search', { search: `%${search.trim()}%` });
     }
-    const validFilterFields = ['category_id', 'is_active', 'is_visible', 'currency_code'];
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null && value !== '' && validFilterFields.includes(key)) {
+
+    const validFilterFields = new Set(['category_id', 'is_active', 'is_visible', 'currency_code']);
+    Object.entries(filters).forEach(([key, value]) => {
+      if (validFilterFields.has(key) && value != null && value !== '') {
         qb.andWhere(`product.${key} = :${key}`, { [key]: value });
       }
-    }
-    const validSortFields = ['id', 'name', 'price', 'created_at'];
-    const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+    });
+
+    const validSortFields = new Set(['id', 'name', 'price', 'created_at']);
+    const finalSortBy = validSortFields.has(sortBy) ? sortBy : 'created_at';
 
     qb.orderBy(`product.${finalSortBy}`, order)
       .skip((page - 1) * limit)

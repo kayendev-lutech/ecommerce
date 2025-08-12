@@ -7,7 +7,6 @@ import { AppDataSource } from '@config/typeorm.config';
 import { Optional } from '@utils/optional.utils';
 import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
 import { ProductResDto } from '@module/product/dto/product.res.dto';
-import { paginate } from '@utils/offset-pagination';
 import { plainToInstance } from 'class-transformer';
 import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
 import { LoadMoreProductsReqDto } from '@module/product/dto/load-more-products-req.dto';
@@ -184,43 +183,33 @@ export class ProductService {
    * @returns CursorPaginatedDto<ProductResDto>
    */
   async loadMoreProducts(
-    reqDto: LoadMoreProductsReqDto, 
+    reqDto: LoadMoreProductsReqDto,
   ): Promise<CursorPaginatedDto<ProductResDto>> {
+    const { limit = 10, afterCursor, beforeCursor } = reqDto || {};
+
     const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
-    
-    const safeReqDto = {
-      limit: reqDto?.limit || 10,
-      afterCursor: reqDto?.afterCursor || null,
-      beforeCursor: reqDto?.beforeCursor || null,
-    };
 
     const paginator = buildPaginator({
       entity: Product,
       alias: 'product',
       paginationKeys: ['created_at'],
       query: {
-        limit: safeReqDto.limit, 
+        limit,
         order: 'DESC',
-        afterCursor: safeReqDto.afterCursor ?? undefined, 
-        beforeCursor: safeReqDto.beforeCursor ?? undefined, 
+        afterCursor,
+        beforeCursor,
       },
     });
 
-    const result = await paginator.paginate(queryBuilder);
-    console.log('Paginator result:', result);
-
-    const data = result?.data ?? [];
-    const cursor = result?.cursor ?? {};
-
-    const products = Array.isArray(data) ? data : [];
+    const { data = [], cursor = {} } = await paginator.paginate(queryBuilder);
 
     const metaDto = new CursorPaginationDto(
-      products.length,
-      cursor.afterCursor ?? '',
-      cursor.beforeCursor ?? '',
+      data.length,
+      (cursor as any)?.afterCursor ?? '',
+      (cursor as any)?.beforeCursor ?? '',
       reqDto,
     );
 
-    return new CursorPaginatedDto(plainToInstance(ProductResDto, products), metaDto);
+    return new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
   }
 }

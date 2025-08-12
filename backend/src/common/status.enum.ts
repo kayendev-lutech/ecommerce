@@ -1,11 +1,13 @@
-export enum CurrencyCode {
-    VND = 'VND', // Vietnamese Dong
-    USD = 'USD', // US Dollar
-    EUR = 'EUR', // Euro
-    GBP = 'GBP', // British Pound
-    JPY = 'JPY', // Japanese Yen
-    AUD = 'AUD', // Australian Dollar
-    CAD = 'CAD', // Canadian Dollar
+export enum CategoryStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  ARCHIVED = 'archived',
+}
+
+export enum CategoryType {
+  MAIN = 'main',
+  SUB = 'sub',
+  SPECIAL = 'special',
 }
 
 export enum ProductStatus {

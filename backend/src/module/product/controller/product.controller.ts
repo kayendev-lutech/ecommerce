@@ -66,7 +66,7 @@ export class ProductController {
       throw new BadRequestException('No image file provided');
     }
 
-    const imageUrl = file.path; // Cloudinary URL
+    const imageUrl = file.path; 
     const updatedProduct = await this.productService.updateProductImage(params.id, imageUrl);
 
     return HttpResponse.ok(updatedProduct, 'Image uploaded successfully');

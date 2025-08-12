@@ -262,7 +262,7 @@ export default class Paginator<Entity extends ObjectLiteral> {
     const metadata = Reflect.getMetadata('design:type', this.entity.prototype, key);
     if (!metadata) {
       console.warn(`No metadata found for key: ${key} in entity: ${this.entity.name}`);
-      return 'string'; // fallback default
+      return 'string';
     }
     return metadata.name.toLowerCase();
   }

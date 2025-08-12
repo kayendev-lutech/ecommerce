@@ -22,83 +22,47 @@ export class VariantService {
   async getAllWithPagination(
     reqDto: ListVariantReqDto,
   ): Promise<CursorPaginatedDto<VariantResDto>> {
-    try {
-      const queryBuilder = this.variantRepository.repository.createQueryBuilder('variant');
-      
-      if (reqDto.product_id) {
-        queryBuilder.andWhere('variant.product_id = :product_id', { 
-          product_id: reqDto.product_id 
-        });
-      }
-      
-      if (reqDto.search && reqDto.search.trim() !== '') {
-        queryBuilder.andWhere('variant.name ILIKE :search', { 
-          search: `%${reqDto.search.trim()}%` 
-        });
-      }
-      
-      if (reqDto.is_active !== undefined && reqDto.is_active !== null) {
-        queryBuilder.andWhere('variant.is_active = :is_active', { 
-          is_active: reqDto.is_active 
-        });
-      }
-      
-      if (reqDto.is_default !== undefined && reqDto.is_default !== null) {
-        queryBuilder.andWhere('variant.is_default = :is_default', { 
-          is_default: reqDto.is_default 
-        });
-      }
-      const paginator = buildPaginator({
-        entity: Variant,
-        alias: 'variant',
-        paginationKeys: ['id'],
-        query: {
-          limit: reqDto.limit || 10,
-          order: reqDto.order || 'DESC',
-          afterCursor: reqDto.afterCursor,
-          beforeCursor: reqDto.beforeCursor,
-        },
-      });
+    const queryBuilder = this.variantRepository.repository.createQueryBuilder('variant');
 
-      const result = await paginator.paginate(queryBuilder);
-
-      let data: Variant[] = [];
-      let cursor: { afterCursor: string | null; beforeCursor: string | null } = { 
-        afterCursor: null, 
-        beforeCursor: null 
-      };
-
-      if (result && typeof result === 'object') {
-        data = Array.isArray(result.data) ? result.data : [];
-        cursor = {
-          afterCursor: result.cursor?.afterCursor ?? null,
-          beforeCursor: result.cursor?.beforeCursor ?? null
-        };
-      }
-
-      const metaDto = new CursorPaginationDto(
-        data.length,
-        cursor.afterCursor ?? '',
-        cursor.beforeCursor ?? '',
-        reqDto,
-      );
-
-      let transformedVariants: VariantResDto[] = [];
-      try {
-        transformedVariants = plainToInstance(VariantResDto, data);
-      } catch (transformError: any) {
-        console.error('Transform error:', transformError);
-        console.error('Data causing error:', data);
-        throw new Error(`Data transformation failed: ${transformError?.message || 'Unknown error'}`);
-      }
-
-      return new CursorPaginatedDto(transformedVariants, metaDto);
-      
-    } catch (error: any) {
-      console.error('getAllWithPagination error:', error);
-      console.error('Error stack:', error?.stack);
-      throw error;
+    if (reqDto.product_id) {
+      queryBuilder.andWhere('variant.product_id = :product_id', { product_id: reqDto.product_id });
     }
+    if (reqDto.search?.trim()) {
+      queryBuilder.andWhere('variant.name ILIKE :search', { search: `%${reqDto.search.trim()}%` });
+    }
+    if (reqDto.is_active !== undefined) {
+      queryBuilder.andWhere('variant.is_active = :is_active', { is_active: reqDto.is_active });
+    }
+    if (reqDto.is_default !== undefined) {
+      queryBuilder.andWhere('variant.is_default = :is_default', { is_default: reqDto.is_default });
+    }
+
+    const paginator = buildPaginator({
+      entity: Variant,
+      alias: 'variant',
+      paginationKeys: ['id'],
+      query: {
+        limit: reqDto.limit ?? 10,
+        order: reqDto.order ?? 'DESC',
+        afterCursor: reqDto.afterCursor,
+        beforeCursor: reqDto.beforeCursor,
+      },
+    });
+
+    const result = await paginator.paginate(queryBuilder);
+    const data = Array.isArray(result.data) ? result.data : [];
+    const cursor = result.cursor ?? { afterCursor: null, beforeCursor: null };
+
+    const metaDto = new CursorPaginationDto(
+      data.length,
+      cursor.afterCursor ?? '',
+      cursor.beforeCursor ?? '',
+      reqDto,
+    );
+
+    const transformedVariants = plainToInstance(VariantResDto, data);
+
+    return new CursorPaginatedDto(transformedVariants, metaDto);
   }
 
   /**

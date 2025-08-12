@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
 import { Variant } from '@module/variant/entity/variant.entity';
-import { CurrencyCode } from './product.enum';
+import { CurrencyCode } from '@common/currency.enum';
 
 @Entity('products')
 export class Product extends BaseEntity {

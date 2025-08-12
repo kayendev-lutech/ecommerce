@@ -2,7 +2,6 @@ import { UpdateCategoryDto } from './../dto/update-category.dto';
 import { CreateCategoryDto } from './../dto/create-category.dto';
 import { Category } from '@module/category/entity/category.entity';
 import { ConflictException, NotFoundException } from '@errors/app-error';
-import { ensureFound, ensureNotExist } from '@utils/entity-check.util';
 import { Inject, Service } from 'typedi';
 import { CategoryRepository } from '@module/category/repository/category.respository';
 import { Container } from 'typedi';
