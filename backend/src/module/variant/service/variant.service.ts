@@ -71,7 +71,7 @@ export class VariantService {
   async getById(id: number): Promise<Variant> {
     return Optional.of(await this.variantRepository.findById(id))
       .throwIfNullable(new NotFoundException('Variant not found'))
-      .get() as Variant;
+      .get<Variant>();
   }
 
   /**
@@ -90,12 +90,12 @@ export class VariantService {
   async update(id: number, data: UpdateVariantDto): Promise<Variant> {
     const variant = Optional.of(await this.getById(id))
       .throwIfNullable(new NotFoundException('Variant not found'))
-      .get() as Variant;
+      .get<Variant>();
 
     if (data.name && variant.product_id) {
       const exist = await this.variantRepository.findByNameAndProductId(
         data.name,
-        Number(variant.product_id),
+        variant.product_id,
       );
       Optional.of(exist).throwIfExist(new ConflictException('Variant name must be unique within a product'));
     }
@@ -107,12 +107,12 @@ export class VariantService {
 
     const updateData: Partial<Variant> = {
       ...data,
-      product_id: data.product_id !== undefined ? String(data.product_id) : undefined,
+      ...(data.product_id !== undefined && { product_id: data.product_id }),
     };
 
     return Optional.of(await this.variantRepository.updateVariant(id, updateData))
       .throwIfNullable(new NotFoundException('Variant not found after update attempt'))
-      .get() as Variant;
+      .get<Variant>();
   }
 
   /**
@@ -145,7 +145,7 @@ export class VariantService {
       is_active: data.is_active ?? true,
       is_default: data.is_default ?? false,
       sort_order: data.sort_order ?? 0,
-      product_id: data.product_id !== undefined ? String(data.product_id) : undefined,
+      product_id: data.product_id,
     };
 
     return this.variantRepository.createVariant(variantData);
@@ -166,6 +166,6 @@ export class VariantService {
   async getBySku(sku: string): Promise<Variant> {
     return Optional.of(await this.variantRepository.findBySku(sku))
       .throwIfNullable(new NotFoundException('Variant not found'))
-      .get() as Variant;
+      .get<Variant>();
   }
 }

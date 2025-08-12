@@ -50,8 +50,8 @@ export class Optional<T> {
     return Boolean(this.#instance);
   }
 
-  get(): T {
+  get<U = T>(): U {
     if (!this.#instance) throw new Error('Should call throwIfNullable first');
-    return this.#instance;
+    return this.#instance as unknown as U;
   }
 }

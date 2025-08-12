@@ -3,6 +3,8 @@ import { ICategoryRepository } from '@module/category/interfaces/category-reposi
 import { Repository } from 'typeorm';
 import { Service } from 'typedi';
 import { AppDataSource } from '@config/typeorm.config';
+import { CreateProductDto } from '@module/product/dto/create-product.dto';
+import { CreateCategoryDto } from '../dto/create-category.dto';
 
 @Service()
 export class CategoryRepository implements ICategoryRepository {
@@ -19,7 +21,7 @@ export class CategoryRepository implements ICategoryRepository {
     return this.repo.findOne({ where: { id } });
   }
 
-  async createCategory(data: Partial<Category>): Promise<Category> {
+  async createCategory(data: CreateCategoryDto): Promise<Category> {
     const category = this.repo.create(data);
     return this.repo.save(category);
   }

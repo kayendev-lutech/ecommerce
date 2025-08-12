@@ -41,6 +41,9 @@ export class Product extends BaseEntity {
   @Column({ type: 'json', nullable: true })
   metadata?: Record<string, any>;
 
-  @OneToMany(() => Variant, variant => variant.product)
+  @OneToMany(() => Variant, variant => variant.product, { 
+    cascade: true, 
+    eager: false
+  })
   variants?: Variant[];
 }

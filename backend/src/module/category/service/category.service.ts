@@ -1,7 +1,7 @@
 import { UpdateCategoryDto } from './../dto/update-category.dto';
 import { CreateCategoryDto } from './../dto/create-category.dto';
 import { Category } from '@module/category/entity/category.entity';
-import { ConflictException, NotFoundException } from '@errors/app-error';
+import { BadRequestException, ConflictException, NotFoundException } from '@errors/app-error';
 import { Inject, Service } from 'typedi';
 import { CategoryRepository } from '@module/category/repository/category.respository';
 import { Container } from 'typedi';
@@ -39,6 +39,11 @@ export class CategoryService {
    * @throws ConflictException if category with same slug already exists
    */
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
+    if (createCategoryDto.parent_id) {
+      Optional.of(await this.categoryRepository.findById(String(createCategoryDto.parent_id)))
+      .throwIfNotPresent(new NotFoundException('Parent category not found'))
+      .get() 
+    }
     if (createCategoryDto.slug) {
       Optional.of(await this.categoryRepository.findBySlug(createCategoryDto.slug))
         .throwIfExist(new ConflictException('Category with this slug already exists'));
@@ -55,7 +60,7 @@ export class CategoryService {
   async getByIdOrFail(id: string): Promise<Category> {
     return Optional.of(await this.getById(id))
       .throwIfNullable(new NotFoundException('Category not found'))
-      .get() as Category;
+      .get<Category>();
   }
 
   /**
@@ -68,8 +73,11 @@ export class CategoryService {
    */
   async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
     await this.getByIdOrFail(id);
-
-    // Check conflict
+    if (updateCategoryDto.parent_id) {
+      Optional.of(await this.categoryRepository.findById(String(updateCategoryDto.parent_id)))
+      .throwIfNotPresent(new NotFoundException('Parent category not found'))
+      .get() 
+    }  
     if (updateCategoryDto.slug) {
       const existingCategory = await this.categoryRepository.findBySlug(updateCategoryDto.slug);
       if (existingCategory && existingCategory.id !== id) {
@@ -79,7 +87,7 @@ export class CategoryService {
 
     return Optional.of(await this.categoryRepository.updateCategory(id, updateCategoryDto))
       .throwIfNullable(new NotFoundException('Category not found'))
-      .get() as Category;
+      .get<Category>();
   }
 
   /**
@@ -112,3 +120,4 @@ export class CategoryService {
   //   return ensureFound(updated, 'Category not found');
   // }
 }
+

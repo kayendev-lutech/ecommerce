@@ -16,6 +16,7 @@ import { ListProductReqDto } from '@module/product/dto/list-product-req.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
 import { validateVariantNames, buildVariantData } from '../validate/product.validate';
 import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
 
 export class ProductService {
   private productRepository = new ProductRepository();
@@ -44,12 +45,14 @@ export class ProductService {
    * @returns Product or throws NotFoundException if not found
    */
   async getById(id: number): Promise<Product | null> {
-    const product = Optional.of(await this.productRepository.findById(id))
-      .throwIfNullable(new NotFoundException('Product not found'))
-      .get() as Product;
+    const product = await this.productRepository.repository.findOne({
+      where: { id },
+      relations: ['variants'],
+    });
 
-    product.variants = await this.variantRepository.findByProductId(id);
-    return product;
+    return Optional.of(product)
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get<Product>();
   }
 
   /**
@@ -60,7 +63,7 @@ export class ProductService {
   async getByIdOrFail(id: number): Promise<Product> {
     return Optional.of(await this.productRepository.findById(id))
       .throwIfNullable(new NotFoundException('Product not found'))
-      .get() as Product;
+      .get<Product>();
   }
   /**
    * Creates a new product along with its variants in a transactional manner.
@@ -70,63 +73,60 @@ export class ProductService {
    * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
    */
   async create(data: CreateProductDto): Promise<Product> {
-    const queryRunner = AppDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      if (data.slug) {
-        Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfPresent(
-          new ConflictException('Slug is alredy exist.Please pick another slug'),
-        );
-      }
-      if (data.category_id) {
-        Optional.of(await this.productRepository.findByCategoryId(data.category_id)).throwIfNullable(
-          new NotFoundException('Id Category is null'),
-        );
-      }
-      const { variants = [], ...productData } = data;
-      const createdProduct = await queryRunner.manager.save(
-        queryRunner.manager.create(Product, productData),
+    if (data.slug) {
+      Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfPresent(
+        new ConflictException('Slug already exists. Please pick another slug'),
       );
+    }
 
-      let createdVariants: Variant[];
+    if (data.category_id) {
+      Optional.of(await this.productRepository.findByCategoryId(data.category_id)).throwIfNullable(
+        new NotFoundException('Category not found'),
+      );
+    }
+
+      const { variants = [], ...productData } = data;
+
+      let variantsToCreate: Partial<Variant>[] = [];
 
       if (variants.length > 0) {
         validateVariantNames(variants);
 
-        const variantData = buildVariantData(variants, createdProduct);
-        createdVariants = await queryRunner.manager.save(
-          queryRunner.manager.create(Variant, variantData),
-        );
+        variantsToCreate = variants.map((v, i) => ({
+          ...v,
+          currency_code: v.currency_code || productData.currency_code || 'VND',
+          price: v.price ?? productData.price ?? 0,
+          is_default: v.is_default ?? i === 0,
+          is_active: v.is_active ?? true,
+          sort_order: v.sort_order ?? i,
+        }));
       } else {
-        const defaultVariant = queryRunner.manager.create(Variant, {
-          product: createdProduct,
-          name: `${createdProduct.name} - Default`,
-          price: createdProduct.price,
-          currency_code: createdProduct.currency_code,
+        variantsToCreate = [{
+          name: `${productData.name} - Default`,
+          price: productData.price,
+          currency_code: productData.currency_code || 'VND',
           stock: 0,
           is_default: true,
           is_active: true,
-        });
-        createdVariants = [await queryRunner.manager.save(defaultVariant)];
+          sort_order: 0,
+        }];
       }
 
-      createdProduct.variants = createdVariants;
+      const productToCreate = this.productRepository.repository.create({
+        ...productData,
+        variants: variantsToCreate.map(variantData => 
+          this.variantRepository.repository.create(variantData)
+        ),
+      });
 
-      await queryRunner.commitTransaction();
+      const createdProduct = await this.productRepository.repository.save(productToCreate);
+
       return createdProduct;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
   }
   /**
    * Update product by ID.
    */
-  async update(id: number, data: Partial<Product>): Promise<Product> {
+  async update(id: number, data: UpdateProductDto): Promise<Product> {
     await this.getByIdOrFail(id);
 
     if (data.slug) {
@@ -138,7 +138,7 @@ export class ProductService {
     const updated = await this.productRepository.updateProduct(id, data);
     const product = Optional.of(updated)
       .throwIfNullable(new NotFoundException('Product not found after update attempt'))
-      .get() as Product;
+      .get<Product>();
 
     product.variants = await this.variantRepository.findByProductId(id);
     return product;
@@ -168,9 +168,8 @@ export class ProductService {
 
       const product = Optional.of(updated)
         .throwIfNullable(new NotFoundException('Product not found after update attempt'))
-        .get() as Product;
+        .get<Product>();
 
-      product.variants = await this.variantRepository.findByProductId(id);
       return product;
     } catch (error) {
       console.error('Update product image error:', error);

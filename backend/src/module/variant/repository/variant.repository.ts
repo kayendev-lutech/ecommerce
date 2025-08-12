@@ -2,6 +2,7 @@ import { AppDataSource } from '@config/typeorm.config';
 import { Variant } from '@module/variant/entity/variant.entity';
 import { ListVariantReqDto } from '../dto/list-variant-req.dto';
 import { buildPaginator } from '@utils/cursor-pagination';
+import { CreateVariantDto } from '../dto/create-variant.dto';
 
 export class VariantRepository {
   private repo = AppDataSource.getRepository(Variant);
@@ -63,14 +64,14 @@ export class VariantRepository {
     return this.repo.findOne({ where: { id: id } });
   }
   async findByProductId(product_id: number): Promise<Variant[]> {
-    return this.repo.find({ where: { product_id: product_id.toString() } });
+    return this.repo.find({ where: { product_id: product_id } });
   }
-  async createVariant(data: Partial<Variant>): Promise<Variant> {
+  async createVariant(data: CreateVariantDto): Promise<Variant> {
     const variant = this.repo.create(data);
     return this.repo.save(variant);
   }
   async findByNameAndProductId(name: string, product_id: number): Promise<Variant | null> {
-    return this.repo.findOne({ where: { name, product_id: product_id.toString() } });
+    return this.repo.findOne({ where: { name, product_id: product_id } });
   }
   async updateVariant(id: number, data: Partial<Variant>): Promise<Variant | null> {
     await this.repo.update({ id: id }, data);

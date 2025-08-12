@@ -9,7 +9,7 @@ export class Variant extends BaseEntity {
   id!: number;
 
   @Column({ type: 'int' })
-  product_id!: string;
+  product_id!: number;
 
   @Column({ type: 'varchar' })
   name!: string;
@@ -56,7 +56,9 @@ export class Variant extends BaseEntity {
   @Column({ type: 'int', default: 0 })
   sort_order?: number;
   
-  @ManyToOne(() => Product, product => product.variants)
-  @JoinColumn({ name: 'product_id' }) 
-  product!: Product;
+  @ManyToOne(() => Product, product => product.variants, { 
+    onDelete: 'CASCADE' 
+  })
+  @JoinColumn({ name: 'product_id' })
+  product?: Product;
 }
