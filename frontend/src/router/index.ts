@@ -15,13 +15,13 @@ export enum RoutePath {
     Login = RoutePrefix.Auth + '/login',
     Register = RoutePrefix.Auth + '/register',
     /*******/
-    AdminProductSub     = RoutePrefix.Admin + '/product',
-    AdminProductCreate  = RoutePrefix.Admin + '/product/create',
-    AdminProductEdit    = RoutePrefix.Admin + '/product/edit',
+    AdminProductSub = RoutePrefix.Admin + '/product',
+    AdminProductCreate = RoutePrefix.Admin + '/product/create',
+    AdminProductEdit = RoutePrefix.Admin + '/product/edit',
 
-    AdminCategorySub    = RoutePrefix.Admin + '/category',
+    AdminCategorySub = RoutePrefix.Admin + '/category',
     AdminCategoryCreate = RoutePrefix.Admin + '/category/create',
-    AdminCategoryEdit   = RoutePrefix.Admin + '/category/edit',
+    AdminCategoryEdit = RoutePrefix.Admin + '/category/edit',
 
     Admincategory = RoutePrefix.Admin + '/category',
     AdminTab3 = RoutePrefix.Admin + '/tab3'

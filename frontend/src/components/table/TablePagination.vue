@@ -7,25 +7,26 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
+import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps<{
-    table: any,
+    table: any
     totalPages: number
 }>()
 </script>
-ư
+
 <template>
     <div class="flex items-center justify-between px-2 mt-4">
         <div class="flex-1 text-sm text-muted-foreground">
             {{ table.getFilteredSelectedRowModel().rows.length }} của
-            {{ table.getFilteredRowModel().rows.length }} dòng được chọn.
+            {{ table.getRowModel().rows.length }} dòng được chọn.
         </div>
         <div class="flex items-center space-x-6 lg:space-x-8">
             <div class="flex items-center space-x-2">
                 <p class="text-sm font-medium">Dòng mỗi trang</p>
                 <Select
                     :model-value="`${table.getState().pagination.pageSize}`"
-                    @update:model-value="table.setPageSize"
+                    @update:model-value="(value) => table.setPageSize(Number(value))"
                 >
                     <SelectTrigger class="h-8 w-[70px]">
                         <SelectValue :placeholder="`${table.getState().pagination.pageSize}`" />
@@ -43,7 +44,7 @@ const props = defineProps<{
             </div>
 
             <div class="flex w-[100px] items-center justify-center text-sm font-medium">
-                Trang {{ props.table.getState().pagination.pageIndex + 1 }} của {{ props.table.getPageCount() }}
+                Trang {{ table.getState().pagination.pageIndex + 1 }} của {{ totalPages }}
             </div>
 
             <div class="flex items-center space-x-2">
@@ -51,24 +52,10 @@ const props = defineProps<{
                     variant="outline"
                     class="hidden h-8 w-8 p-0 lg:flex"
                     :disabled="!table.getCanPreviousPage()"
-                    @click="table.setPageIndex(0)"
+                    @click="table.firstPage()"
                 >
                     <span class="sr-only">Go to first page</span>
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="h-4 w-4"
-                    >
-                        <path d="m11 17-5-5 5-5" />
-                        <path d="m18 17-5-5 5-5" />
-                    </svg>
+                    <ChevronFirst class="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
@@ -77,9 +64,7 @@ const props = defineProps<{
                     @click="table.previousPage()"
                 >
                     <span class="sr-only">Go to previous page</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                        <path d="M15 18l-6-6 6-6" />
-                    </svg>
+                    <ChevronLeft class="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
@@ -88,21 +73,16 @@ const props = defineProps<{
                     @click="table.nextPage()"
                 >
                     <span class="sr-only">Go to next page</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                        <path d="m9 18 6-6-6-6" />
-                    </svg>
+                    <ChevronRight class="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
                     class="hidden h-8 w-8 p-0 lg:flex"
                     :disabled="!table.getCanNextPage()"
-                    @click="table.setPageIndex(table.getPageCount() - 1)"
+                    @click="table.lastPage()"
                 >
                     <span class="sr-only">Go to last page</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                        <path d="m6 17 5-5-5-5" />
-                        <path d="m13 17 5-5-5-5" />
-                    </svg>
+                    <ChevronLast class="h-4 w-4" />
                 </Button>
             </div>
         </div>

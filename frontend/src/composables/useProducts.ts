@@ -1,62 +1,60 @@
-import { apiGetProducts } from '@/api/product/product.api';
-import { keepPreviousData, useQuery } from '@tanstack/vue-query';
-import type { PaginationState } from '@tanstack/vue-table';
-import { computed, ref } from 'vue';
+import { apiGetProducts } from '@/api/product/product.api'
+import { useQuery } from '@tanstack/vue-query'
+import type { PaginationState } from '@tanstack/vue-table'
+import { computed, ref } from 'vue'
 
 export function useProducts() {
-    const searchTerm = ref('');
-    const status = ref('all'); // Example filter
+    const searchTerm = ref('')
+    const sortBy = ref('name')
+    const order = ref<'ASC' | 'DESC'>('ASC')
+    const categoryId = ref<number | undefined>(undefined)
+
     const tablePagination = ref<PaginationState>({
-        pageIndex: 0, // Corresponds to the first page
-        pageSize: 10,
-    });
+        pageIndex: 0,
+        pageSize: 10
+    })
+
     const queryKey = computed(() => [
         'products',
         {
-            status: status.value,
-            page: tablePagination.value.pageIndex + 1, // API uses 1-based index
-            pageSize: tablePagination.value.pageSize,
-            search: searchTerm.value,
-        },
-    ]);
+            page: tablePagination.value.pageIndex + 1,
+            limit: tablePagination.value.pageSize,
+            search: searchTerm.value.length >= 1 ? searchTerm.value : undefined,
+            order: order.value,
+            sortBy: sortBy.value,
+            category_id: categoryId.value
+        }
+    ])
 
-    const { data, isLoading, isFetching, isPlaceholderData } = useQuery({
+    const { data, isLoading, isFetching, refetch } = useQuery({
         queryKey: queryKey,
         queryFn: () =>
             apiGetProducts({
-                status: status.value,
                 page: tablePagination.value.pageIndex + 1,
-                pageSize: tablePagination.value.pageSize,
-                search: searchTerm.value,
+                limit: tablePagination.value.pageSize,
+                search: searchTerm.value.length >= 1 ? searchTerm.value : undefined,
+                order: order.value,
+                sortBy: sortBy.value,
+                category_id: categoryId.value
             }),
-        select: (response) => {
-            const products = response?.data || [];
-            const pagination = response?.pagination;
-            console.log("product: ", products)
-            console.log("product: ", pagination)
-            return {
-                products: products,
-                totalItems: pagination?.total || 0,
-                totalPages: pagination?.totalPages || 0,
-            };
-        },
-        placeholderData: keepPreviousData,
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    });
+        staleTime: 1000 * 30
+    })
 
-    const products = computed(() => data.value?.products || []);
-    const totalItems = computed(() => data.value?.totalItems || 0);
-    const totalPages = computed(() => data.value?.totalPages || 0);
+    const products = computed(() => data.value?.data || [])
+    const totalItems = computed(() => data.value?.pagination?.totalRecords || 0)
+    const totalPages = computed(() => data.value?.pagination?.totalPages || 0)
 
     return {
         products,
         totalItems,
-        totalPages, // <-- Expose totalPages
-        searchTerm,
+        totalPages,
         tablePagination,
-        status,
+        searchTerm,
+        sortBy,
+        order,
+        categoryId,
         isLoading,
         isFetching,
-        isPlaceholderData,
-    };
+        refetch
+    }
 }

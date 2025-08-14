@@ -6,7 +6,9 @@ const axiosClient = axios.create({
 })
 
 axiosClient.interceptors.request.use((config) => {
-    config.headers['Content-Type'] = 'application/json'
+    if (!(config.data instanceof FormData)) {
+        config.headers['Content-Type'] = 'application/json'
+    }
     config.headers['Access-Control-Allow-Origin'] = '*'
     // X-CSRFToken: FGWp2aF83aGv8UNqTUzKom4RwMfsYo5kSqzdHahcsi495vgsyYnzBEgY9OohXcWr
 

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { apiGetProduct, apiUpdateProduct, apiUploadProductImage } from '@/api/product/product.api'
-import { ActionButtons, Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import ProductCategoryForm from '@/components/product/ProductCategoryForm.vue'
+import ProductStatusForm from '@/components/product/ProductStatusForm.vue'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
     Select,
     SelectContent,
@@ -12,519 +14,404 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
-import { Bold, CloudUpload, Italic, Link, List, Plus, Underline } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
-// import { toast } from 'vue-sonner'
-import { useToast } from '@/components/ui/toast/use-toast'
 import router, { RoutePath } from '@/router'
+import { toTypedSchema } from '@vee-validate/zod'
+import { ArrowLeft, Package } from 'lucide-vue-next'
+import { useForm } from 'vee-validate'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import * as z from 'zod'
+
 const route = useRoute()
 const productId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-
-const { toast } = useToast()
-const productName = ref('')
-const description = ref('')
-const basePrice = ref('')
-const mediaUrl = ref('')
+const selectedImageFile = ref<File | null>(null)
 const activeTab = ref('general')
-const status = ref('published')
-const category = ref('')
-const discountType = ref('no-discount')
-const discountValue = ref('')
-const taxClass = ref('')
-const vatAmount = ref('')
-const template = ref('default')
-const currencyCode = ref('')
-const discountPrice = ref('')
 
 const statusOptions = [
-    { value: 'published', label: 'Published', color: 'green' },
-    { value: 'draft', label: 'Draft', color: 'gray' },
-    { value: 'scheduled', label: 'Scheduled', color: 'blue' }
+    { value: 'published', label: 'Published' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'scheduled', label: 'Scheduled' }
 ]
-
-// Fixed: Removed empty string option
 const categoryOptions = [
-    { value: 'electronics', label: 'Electronics' },
-    { value: 'clothing', label: 'Clothing' },
-    { value: 'books', label: 'Books' }
+    { value: '1', label: 'Electronics' },
+    { value: '2', label: 'Clothing' },
+    { value: '3', label: 'Books' }
 ]
 
-const templateOptions = [
-    { value: 'default', label: 'Default template' },
-    { value: 'minimal', label: 'Minimal template' },
-    { value: 'detailed', label: 'Detailed template' }
-]
 const productSchema = z.object({
     name: z.string().min(1, 'Product name is required'),
-    price: z.preprocess(
-        (val) => (val === '' ? undefined : Number(val)),
-        z.number({ invalid_type_error: 'Price must be a number' }).min(0.01, 'Price is required')
-    ),
-    currency_code: z.string().min(1, 'Currency code is required'),
+    slug: z.string().min(1, 'Slug is required'),
     description: z.string().optional(),
-    discount_price: z.preprocess(
-        (val) => (val === '' ? undefined : Number(val)),
-        z.number().optional()
-    ),
-    image_url: z.string().optional()
+    price: z.preprocess(val => val === '' ? undefined : Number(val), z.number().positive('Price must be a positive number')),
+    discount_price: z.preprocess(val => val === '' || val === null ? undefined : Number(val), z.number().optional()),
+    category_id: z.union([z.string(), z.number()]).refine(val => String(val).length > 0, { message: 'Category is required' }),
+    image_url: z.string().optional(),
+    is_active: z.boolean().optional(),
+    is_visible: z.boolean().optional(),
+    // status: z.string().optional(),
 })
-const handleSave = async () => {
-    const result = productSchema.safeParse({
-        name: productName.value,
-        price: basePrice.value,
-        currency_code: currencyCode.value,
-        description: description.value,
-        discount_price: discountPrice.value,
-        image_url: mediaUrl.value
-    })
-    if (!result.success) {
-        toast({
-            title: 'Validation Error',
-            description: result.error.errors.map((e) => e.message).join(', '),
-            variant: 'destructive'
-        })
-        return
+
+const { handleSubmit, setFieldValue, values, errors } = useForm({
+    validationSchema: toTypedSchema(productSchema),
+    initialValues: {
+        name: '',
+        slug: '',
+        description: '',
+        price: undefined,
+        discount_price: undefined,
+        category_id: '',
+        image_url: '',
+        is_active: true,
+        is_visible: true,
+        // status: 'published'
     }
+})
 
-    const { price, discount_price, ...rest } = result.data
-
-    const payload = {
-        ...rest,
-        ...(price !== undefined && { price: String(price) }),
-        ...(discount_price !== undefined && { discount_price: String(discount_price) })
-    }
-
-    try {
-        await apiUpdateProduct(productId, payload)
-        toast({
-            title: 'Success',
-            description: 'Product updated successfully!',
-            variant: 'destructive'
-        })
-        router.push(RoutePath.AdminProductSub)
-    } catch (error) {
-        // --- FIXED CATCH BLOCK ---
-        let errorMessage = 'An unexpected error occurred. Please try again.' // Default message
-
-        toast({
-            title: 'Error',
-            description: errorMessage,
-            variant: 'destructive'
-        })
-        // --- END OF FIX ---
-    }
+function slugify(str: string) {
+    if (!str) return ''
+    return str
+        .toLowerCase()
+        .trim()
+        .replace(/[\s\W-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
 }
 
+interface HandleProductNameUpdate {
+    (value: string): void
+}
+
+const handleProductNameUpdate: HandleProductNameUpdate = (value: string) => {
+    setFieldValue('name', value)
+    setFieldValue('slug', slugify(value))
+}
+const debugForm = () => {
+    console.log('Current form values:', values)
+    console.log('Current form errors:', errors)
+}
+onMounted(async () => {
+    if (productId) {
+        try {
+            const product = await apiGetProduct(productId.toString());
+            setFieldValue('name', product.data.name || '');
+            setFieldValue('slug', product.data.slug || '');
+            setFieldValue('description', product.data.description || '');
+            setFieldValue('price', product.data.price ? Number(product.data.price) : undefined);
+            setFieldValue('discount_price', product.data.discount_price !== null && product.data.discount_price !== undefined ? Number(product.data.discount_price) : undefined);
+            setFieldValue('category_id', product.data.category_id ? String(product.data.category_id) : '');
+            setFieldValue('image_url', product.data.image_url || '');
+            setFieldValue('is_active', product.data.is_active ?? true);
+            setFieldValue('is_visible', product.data.is_visible ?? true);
+        } catch (error) {
+            console.error("Failed to fetch product data:", error);
+        }
+    }
+});
+
+
+const onSubmit = handleSubmit(async (formValues) => {
+    if (!productId) {
+        console.error("Product ID is missing. Cannot update.");
+        return;
+    }
+    try {
+        console.log('Form submitted successfully. Values:', formValues)
+        
+        const response = await apiUpdateProduct(productId.toString(), formValues)
+        console.log('Product updated:', response)
+
+        window.$niceAlert?.success?.('Cập nhật sản phẩm thành công!')
+        await router.push(RoutePath.AdminProductSub)
+    } catch (error) {
+        console.error("Error updating product:", error)
+        window.$niceAlert?.error?.('Cập nhật sản phẩm thất bại!')
+    }
+})
+
+const handleImageUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
+    if (!file) {
+        console.error('No file selected')
+        return
+    }
+    
+    if (!productId) {
+        console.error('No product ID available')
+        return
+    }
+    try {
+        console.log('Uploading file:', file.name, 'Size:', file.size)
+        const resp = await apiUploadProductImage(productId.toString(), file)
+        console.log('Upload response:', resp)
+        
+        setFieldValue('image_url', resp.data?.image_url || resp.image_url || '')
+        window.$niceAlert?.success?.('Upload ảnh thành công!')
+    } catch (error) {
+        console.error('Image upload failed:', error)
+        window.$niceAlert?.error?.('Upload ảnh thất bại!')
+    }
+}
 const handleCancel = () => {
     router.push(RoutePath.AdminProductSub)
 }
 
-const handleFileUpload = async (event: Event) => {
-    const target = event.target as HTMLInputElement
-    if (!target.files || target.files.length === 0) {
-        toast({
-            title: 'Vui lòng chọn ảnh để upload!',
-            description: 'Bạn chưa chọn file ảnh.',
-            variant: 'destructive',
-            class: 'bg-yellow-50 text-yellow-900 border-yellow-300'
-        })
-        return
-    }
-    const file = target.files[0]
-    try {
-        const resp = await apiUploadProductImage(productId, file)
-        mediaUrl.value = resp.image_url
-        toast({
-            title: 'Upload thành công!',
-            description: 'Ảnh sản phẩm đã được cập nhật.',
-            variant: 'default',
-            class: 'bg-emerald-50 text-emerald-900 border-emerald-300'
-        })
-    } catch (error) {
-        toast({
-            title: 'Upload thất bại!',
-            description: 'Không thể upload ảnh. Vui lòng thử lại.',
-            variant: 'destructive',
-            class: 'bg-red-50 text-red-900 border-red-300'
-        })
-    }
+const handleCreateCategory = () => {
+    console.log('Create new category')
 }
-
-const getStatusColor = (statusValue: string) => {
-    switch (statusValue) {
-        case 'published':
-            return 'bg-green-500'
-        case 'draft':
-            return 'bg-gray-500'
-        case 'scheduled':
-            return 'bg-blue-500'
-        default:
-            return 'bg-gray-500'
-    }
-}
-onMounted(async () => {
-    if (productId) {
-        const resp = await apiGetProduct(productId)
-        const product = resp.data
-        productName.value = product.name || ''
-        description.value = product.description || ''
-        basePrice.value = product.price || ''
-        mediaUrl.value = product.image_url || ''
-        currencyCode.value = product.currency_code || ''
-        discountPrice.value = product.discount_price || ''
-    }
-})
 </script>
 
 <template>
-    <div class="flex flex-col lg:flex-row gap-6 p-6 bg-slate-50 min-h-screen w-full">
-        <!-- Left Sidebar -->
-        <div class="w-full lg:w-80 flex flex-col gap-5 flex-shrink-0">
-            <!-- Status Section -->
-            <ProductStatusForm v-model="status" :options="statusOptions" />
-
-            <!-- Product Details Section -->
-            <Card>
-                <CardHeader>
-                    <CardTitle class="text-base">Product Details</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-4">
-                    <div class="space-y-2">
-                        <Label class="text-sm font-medium">Categories</Label>
-                        <Select v-model="category">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="option in categoryOptions"
-                                    :key="option.value"
-                                    :value="option.value"
-                                >
-                                    {{ option.label }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p class="text-xs text-muted-foreground">Add product to a category.</p>
-                    </div>
-                    <Button variant="outline" class="w-full justify-center gap-2">
-                        <Plus class="w-4 h-4" />
-                        Create new category
-                    </Button>
-                </CardContent>
-            </Card>
-
-            <!-- Product Template Section -->
-            <Card>
-                <CardHeader>
-                    <CardTitle class="text-base">Product Template</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-3">
-                    <Select v-model="template">
-                        <SelectTrigger>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem
-                                v-for="option in templateOptions"
-                                :key="option.value"
-                                :value="option.value"
+    <main class="min-h-screen bg-slate-50">
+        <form @submit.prevent="onSubmit">
+            <!-- Header -->
+            <div
+                class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-slate-200/60"
+            >
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <button
+                            @click="handleCancel"
+                            type="button"
+                            class="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-800 transition-all duration-200 hover:bg-slate-100 px-3 py-2 rounded-lg"
+                        >
+                            <ArrowLeft class="w-4 h-4 mr-2" />
+                            Back to Products
+                        </button>
+                        <!-- Action buttons moved to header for better UX on mobile -->
+                        <div class="flex items-center space-x-4">
+                            <button
+                                type="button"
+                                @click="handleCancel"
+                                class="px-4 py-2 rounded-lg text-sm font-medium bg-slate-200/80 text-slate-700 hover:bg-slate-300/80 transition-colors"
                             >
-                                {{ option.label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <p class="text-xs text-muted-foreground leading-relaxed">
-                        Assign a template from your current theme to define how a single product is
-                        displayed.
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
-
-        <!-- Main Content -->
-        <Card class="flex-1 flex flex-col min-h-[calc(100vh-3rem)]">
-            <Tabs v-model="activeTab" class="flex flex-col h-full">
-                <TabsList
-                    class="grid w-full grid-cols-2 rounded-none border-b bg-transparent h-auto p-0"
-                >
-                    <TabsTrigger
-                        value="general"
-                        class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary py-4"
-                    >
-                        General
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="advanced"
-                        class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary py-4"
-                    >
-                        Advanced
-                    </TabsTrigger>
-                </TabsList>
-
-                <div class="flex-1 overflow-y-auto">
-                    <TabsContent value="general" class="p-6 space-y-8 mt-0">
-                        <h2 class="text-xl font-semibold">General</h2>
-
-                        <!-- Product Name -->
-                        <div class="space-y-2">
-                            <Label class="text-sm font-medium">
-                                Product Name <span class="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                v-model="productName"
-                                placeholder="Product name"
-                                class="w-full"
-                            />
-                            <p class="text-xs text-muted-foreground">
-                                A product name is required and recommended to be unique.
-                            </p>
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                class="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md"
+                            >
+                                Update Product
+                            </button>
                         </div>
-
-                        <!-- Description -->
-                        <div class="space-y-2">
-                            <Label class="text-sm font-medium">Description</Label>
-                            <div class="border border-input rounded-lg overflow-hidden">
-                                <div class="flex items-center gap-1 p-2 bg-muted border-b">
-                                    <Button variant="ghost" size="sm" class="h-8 px-3 text-xs">
-                                        Normal
-                                    </Button>
-                                    <div class="w-px h-4 bg-border mx-1"></div>
-                                    <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                                        <Bold class="w-3 h-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                                        <Italic class="w-3 h-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                                        <Underline class="w-3 h-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                                        <Link class="w-3 h-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                                        <List class="w-3 h-3" />
-                                    </Button>
-                                </div>
-                                <Textarea
-                                    v-model="description"
-                                    placeholder="Type your text here..."
-                                    :rows="6"
-                                    class="border-0 rounded-none resize-none focus-visible:ring-0"
-                                />
-                                <!-- Media -->
-                                <div class="space-y-2">
-                                    <Label class="text-sm font-medium">Media</Label>
-                                    <div
-                                        class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-16 text-center bg-muted/50 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer relative"
-                                    >
-                                        <CloudUpload class="w-10 h-10 text-primary mx-auto mb-4" />
-                                        <p class="text-sm text-muted-foreground">
-                                            <strong>Drop files here or click to upload.</strong
-                                            ><br />
-                                            Upload up to 10 files
-                                        </p>
-                                        <input
-                                            type="file"
-                                            @change="handleFileUpload"
-                                            class="absolute inset-0 opacity-0 cursor-pointer"
-                                        />
-                                        <div v-if="mediaUrl" class="mt-4 flex justify-center">
-                                            <img
-                                                :src="mediaUrl"
-                                                alt="Product Image"
-                                                class="max-h-40 rounded shadow"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Pricing -->
-                        <div class="space-y-4">
-                            <Label class="text-sm font-medium">Pricing</Label>
-                            <div class="border border-input rounded-lg p-6 bg-muted/50 space-y-6">
-                                <div class="space-y-2">
-                                    <Label class="text-sm font-medium">
-                                        Base Price <span class="text-destructive">*</span>
-                                    </Label>
-                                    <Input v-model="basePrice" placeholder="Product price" />
-                                    <p class="text-xs text-muted-foreground">
-                                        Set the product price.
-                                    </p>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <Label class="text-sm font-medium">Discount Type</Label>
-                                    <RadioGroup v-model="discountType" class="flex flex-wrap gap-8">
-                                        <div class="flex items-center space-x-2">
-                                            <RadioGroupItem value="no-discount" id="no-discount" />
-                                            <Label for="no-discount" class="text-sm"
-                                                >No Discount</Label
-                                            >
-                                        </div>
-                                        <div class="flex items-center space-x-2">
-                                            <RadioGroupItem value="percentage" id="percentage" />
-                                            <Label for="percentage" class="text-sm"
-                                                >Percentage %</Label
-                                            >
-                                        </div>
-                                        <div class="flex items-center space-x-2">
-                                            <RadioGroupItem value="fixed" id="fixed" />
-                                            <Label for="fixed" class="text-sm">Fixed Price</Label>
-                                        </div>
-                                    </RadioGroup>
-                                </div>
-
-                                <div v-if="discountType !== 'no-discount'" class="space-y-2">
-                                    <Label class="text-sm font-medium">Discount Value</Label>
-                                    <Input
-                                        v-model="discountValue"
-                                        :placeholder="
-                                            discountType === 'percentage'
-                                                ? 'Percentage'
-                                                : 'Fixed amount'
-                                        "
-                                    />
-                                    <p class="text-xs text-muted-foreground">
-                                        Set the discount
-                                        {{
-                                            discountType === 'percentage' ? 'percentage' : 'amount'
-                                        }}.
-                                    </p>
-                                    <div v-if="discountType === 'fixed'" class="space-y-2">
-                                        <Label class="text-sm font-medium">Discount Price</Label>
-                                        <Input
-                                            v-model="discountPrice"
-                                            placeholder="Discount price"
-                                        />
-                                        <p class="text-xs text-muted-foreground">
-                                            Discounted price for the product.
-                                        </p>
-                                        <Label class="text-sm font-medium">Currency Code</Label>
-                                        <Input
-                                            v-model="currencyCode"
-                                            placeholder="Currency code (e.g. VND, USD)"
-                                        />
-                                        <p class="text-xs text-muted-foreground">
-                                            Currency for product price.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Additional Product Information -->
-                        <div class="space-y-4">
-                            <Label class="text-sm font-medium">Additional Information</Label>
-                            <div class="border border-input rounded-lg p-6 bg-muted/50 space-y-6">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium">SKU</Label>
-                                        <Input placeholder="Product SKU" />
-                                        <p class="text-xs text-muted-foreground">
-                                            Stock Keeping Unit for inventory tracking.
-                                        </p>
-                                    </div>
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium">Barcode</Label>
-                                        <Input placeholder="Product barcode" />
-                                        <p class="text-xs text-muted-foreground">
-                                            Product barcode for scanning.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium">Weight (kg)</Label>
-                                        <Input placeholder="0.00" />
-                                        <p class="text-xs text-muted-foreground">
-                                            Product weight for shipping calculations.
-                                        </p>
-                                    </div>
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium"
-                                            >Dimensions (L×W×H cm)</Label
-                                        >
-                                        <Input placeholder="0×0×0" />
-                                        <p class="text-xs text-muted-foreground">
-                                            Product dimensions for shipping.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="advanced" class="p-6 space-y-8 mt-0">
-                        <div>
-                            <h2 class="text-xl font-semibold mb-2">Advanced</h2>
-                            <p class="text-muted-foreground">
-                                Advanced product settings and configurations.
-                            </p>
-                        </div>
-
-                        <!-- SEO Settings -->
-                        <div class="space-y-4">
-                            <Label class="text-sm font-medium">SEO Settings</Label>
-                            <div class="border border-input rounded-lg p-6 bg-muted/50 space-y-6">
-                                <div class="space-y-2">
-                                    <Label class="text-sm font-medium">Meta Title</Label>
-                                    <Input placeholder="SEO meta title" />
-                                    <p class="text-xs text-muted-foreground">
-                                        Title that appears in search engine results.
-                                    </p>
-                                </div>
-                                <div class="space-y-2">
-                                    <Label class="text-sm font-medium">Meta Description</Label>
-                                    <Textarea :rows="3" placeholder="SEO meta description" />
-                                    <p class="text-xs text-muted-foreground">
-                                        Description that appears in search engine results.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Inventory Settings -->
-                        <div class="space-y-4">
-                            <Label class="text-sm font-medium">Inventory Settings</Label>
-                            <div class="border border-input rounded-lg p-6 bg-muted/50">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium">Stock Quantity</Label>
-                                        <Input type="number" placeholder="0" />
-                                        <p class="text-xs text-muted-foreground">
-                                            Current stock quantity.
-                                        </p>
-                                    </div>
-                                    <div class="space-y-2">
-                                        <Label class="text-sm font-medium"
-                                            >Low Stock Threshold</Label
-                                        >
-                                        <Input type="number" placeholder="5" />
-                                        <p class="text-xs text-muted-foreground">
-                                            Alert when stock falls below this number.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </TabsContent>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Action Buttons -->
-                <ActionButtons
-                    :onCancel="handleCancel"
-                    :onSave="handleSave"
-                    cancelText="Cancel"
-                    saveText="Save Changes"
-                />
-            </Tabs>
-        </Card>
-    </div>
+            <!-- Main Content -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Main Form Column -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl shadow-sm">
+                            <Tabs v-model="activeTab" class="w-full">
+                                <div class="p-6">
+                                    <TabsContent value="general" class="mt-0 space-y-6">
+                                        <FormField name="name" v-slot="{ field, errorMessage }">
+                                            <FormItem>
+                                                <FormLabel>Product Name</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        v-bind="field"
+                                                        class="w-full border border-black text-black rounded-lg"
+                                                        placeholder="e.g. Awesome T-Shirt"
+                                                        @input="(e: Event) => handleProductNameUpdate((e.target as HTMLInputElement).value)"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage class="text-red-500 text-sm">{{ errorMessage }}</FormMessage>
+                                            </FormItem>
+                                        </FormField>
+
+                                        <FormField name="slug" v-slot="{ field, errorMessage }">
+                                            <FormItem>
+                                                <FormLabel>Slug</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        v-bind="field"
+                                                        :value="field.value"
+                                                        class="w-full border border-black text-black rounded-lg"
+                                                        placeholder="e.g. awesome-t-shirt"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage class="text-red-500 text-sm">{{
+                                                    errorMessage
+                                                }}</FormMessage>
+                                            </FormItem>
+                                        </FormField>
+
+                                        <FormField
+                                            name="description"
+                                            v-slot="{ field, errorMessage }"
+                                        >
+                                            <FormItem>
+                                                <FormLabel>Description</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        :value="field.value"
+                                                        @update:modelValue="
+                                                            field['onUpdate:modelValue']
+                                                        "
+                                                        :class="['border border-black text-black', errorMessage ? 'border-black' : '']"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage class="text-red-500 text-sm">{{
+                                                    errorMessage
+                                                }}</FormMessage>
+                                            </FormItem>
+                                        </FormField>
+                                    </TabsContent>
+                                    <TabsContent value="advanced" class="mt-0 space-y-6">
+                                        <!-- Add advanced fields here -->
+                                        <p>Advanced settings will be here.</p>
+                                    </TabsContent>
+                                </div>
+                            </Tabs>
+                        </div>
+
+                        <!-- Pricing and Media in separate cards -->
+                        <div
+                            class="bg-white/60 backdrop-blur-sm rounded-xl shadow-sm p-6 space-y-6"
+                        >
+                            <h3 class="text-lg font-semibold text-slate-800">Pricing</h3>
+                            <FormField name="price" v-slot="{ field, errorMessage }">
+                                <FormItem>
+                                    <FormLabel>Base Price</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            :value="field.value"
+                                            @update:modelValue="field['onUpdate:modelValue']"
+                                            class="w-full border border-black text-black"
+                                            placeholder="e.g. 99.99"
+                                        />
+                                    </FormControl>
+                                    <FormMessage class="text-red-500 text-sm">{{
+                                        errorMessage
+                                    }}</FormMessage>
+                                </FormItem>
+                            </FormField>
+                             <FormField name="discount_price" v-slot="{ field, errorMessage }">
+                                <FormItem>
+                                    <FormLabel>Discount Price</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            :value="field.value"
+                                            @update:modelValue="field['onUpdate:modelValue']"
+                                            class="w-full border border-black text-black"
+                                            placeholder="e.g. 99.99"
+                                        />
+                                    </FormControl>
+                                    <FormMessage class="text-red-500 text-sm">{{
+                                        errorMessage
+                                    }}</FormMessage>
+                                </FormItem>
+                            </FormField>
+                        </div>
+                        <div
+                            class="bg-white/60 backdrop-blur-sm rounded-xl shadow-sm p-6 space-y-6"
+                        >
+                            <h3 class="text-lg font-semibold text-slate-800">Media</h3>
+                            <FormField name="image_url" v-slot="{ field, errorMessage }">
+                                <FormItem>
+                                    <FormLabel class="text-slate-700 font-medium">Product Image</FormLabel>
+                                    <FormControl>
+                                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center bg-slate-50/50 hover:border-indigo-400 transition-colors">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                @change="handleImageUpload"
+                                                class="hidden"
+                                                id="image-upload"
+                                            />
+                                            <label
+                                                for="image-upload"
+                                                class="cursor-pointer flex flex-col items-center gap-2"
+                                            >
+                                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                    <Package class="w-5 h-5 text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <p class="text-slate-600 font-medium text-sm">
+                                                        Click to upload or drag & drop
+                                                    </p>
+                                                    <p class="text-xs text-slate-500">
+                                                        PNG, JPG, GIF up to 10MB
+                                                    </p>
+                                                </div>
+                                            </label>
+                                            <!-- Hiển thị ảnh nếu có image_url -->
+                                            <div v-if="field.value" class="mt-4 flex justify-center">
+                                                <img
+                                                    :src="field.value"
+                                                    alt="Product Image"
+                                                    class="max-h-40 rounded shadow"
+                                                />
+                                            </div>
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage class="text-red-500 text-sm">{{ errorMessage }}</FormMessage>
+                                </FormItem>
+                            </FormField>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Column -->
+                    <div class="lg:col-span-1 space-y-8">
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                                <h3 class="font-semibold text-slate-800">Status</h3>
+                            </div>
+                            <FormField v-slot="{ componentField }" name="">
+                                <FormItem>
+                                    <FormControl>
+                                        <ProductStatusForm
+                                            :modelValue="componentField.modelValue"
+                                            @update:modelValue="
+                                                componentField['onUpdate:modelValue']
+                                            "
+                                            :options="statusOptions"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            </FormField>
+                        </div>
+
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-2.5 h-2.5 bg-purple-500 rounded-full"></div>
+                                <h3 class="font-semibold text-slate-800">Category</h3>
+                            </div>
+                            <FormField v-slot="{ componentField }" name="category_id">
+                                <FormItem>
+                                    <FormControl>
+                                        <ProductCategoryForm
+                                            :modelValue="componentField.modelValue"
+                                            @update:modelValue="
+                                                componentField['onUpdate:modelValue']
+                                            "
+                                            :options="categoryOptions"
+                                            @create-category="handleCreateCategory"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            </FormField>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            
+        </form>
+        
+    </main>
+    
 </template>
+
+<style scoped>
+/* Scoped styles can remain largely the same, but ensure they don't conflict */
+/* For example, you can simplify or remove some overrides if Tailwind handles it well */
+[data-state='active'] {
+    @apply bg-white shadow-sm text-indigo-600;
+}
+</style>

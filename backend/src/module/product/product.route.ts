@@ -1,4 +1,4 @@
-import { WrapperClass } from '@utils/wrapper.util';
+import { WrapperClasss } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { ProductController } from '@module/product/controller/product.controller';
 // Validate dto
@@ -11,7 +11,7 @@ import { IdParamDto } from '@module/product/dto/id-param.dto';
 import { ListProductReqDto } from './dto/list-product-req.dto';
 import { LoadMoreProductsReqDto } from './dto/load-more-products-req.dto';
 const router = Router();
-const wrappedProductController = new WrapperClass(
+const wrappedProductController = new WrapperClasss(
   new ProductController(),
 ) as unknown as ProductController & { [key: string]: any };
 /**
