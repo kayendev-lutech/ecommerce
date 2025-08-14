@@ -60,7 +60,6 @@ export class ProductService {
     }
     return result;
   }
-
   /**
    * Retrieves products using cursor-based pagination ("load more").
    * Implements cache for cursor-based pagination.
@@ -69,65 +68,42 @@ export class ProductService {
     reqDto: LoadMoreProductsReqDto,
   ): Promise<CursorPaginatedDto<ProductResDto>> {
     const { limit = 10, afterCursor, beforeCursor } = reqDto || {};
-    
-    // Tạo cache key cho cursor pagination
+
+    // create cache key cursor pagination
     const cursorCacheKey = getProductListCacheKey(
       `cursor:limit:${limit}|after:${afterCursor || ''}|before:${beforeCursor || ''}`
     );
 
-    try {
-      const cachedResult = await this.redisService.get<CursorPaginatedDto<ProductResDto>>(cursorCacheKey);
-      
-      if (cachedResult) {
-        logger.info(`Cursor product list loaded from cache: ${cursorCacheKey}`);
-        return cachedResult;
+    const result = await getOrSetCache(this.redisService, cursorCacheKey, 180, async () => {
+        logger.info(`Cursor product list cache miss, querying DB: ${cursorCacheKey}`);
+        const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
+        const paginator = buildPaginator({
+          entity: Product,
+          alias: 'product',
+          paginationKeys: ['created_at'],
+          query: {
+            limit,
+            order: 'DESC',
+            afterCursor,
+            beforeCursor,
+          },
+        });
+        const { data = [], cursor = {} } = await paginator.paginate(queryBuilder);
+        const metaDto = new CursorPaginationDto(
+          data.length,
+          (cursor as any)?.afterCursor ?? '',
+          (cursor as any)?.beforeCursor ?? '',
+          reqDto,
+        );
+        const result = new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
+        logger.info(`Cursor product list cached: ${cursorCacheKey}`);
+        return result;
       }
-
-      logger.info(`Cursor product list cache miss, querying DB: ${cursorCacheKey}`);
-      const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
-      const paginator = buildPaginator({
-        entity: Product,
-        alias: 'product',
-        paginationKeys: ['created_at'],
-        query: {
-          limit,
-          order: 'DESC',
-          afterCursor,
-          beforeCursor,
-        },
-      });
-      const { data = [], cursor = {} } = await paginator.paginate(queryBuilder);
-      const metaDto = new CursorPaginationDto(
-        data.length,
-        (cursor as any)?.afterCursor ?? '',
-        (cursor as any)?.beforeCursor ?? '',
-        reqDto,
-      );
-      const result = new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
-
-      await this.redisService.set(cursorCacheKey, result, 180); // 3 phút
-      logger.info(`Cursor product list cached: ${cursorCacheKey}`);
-
-      return result;
-    } catch (error) {
-      logger.error(`Error in loadMoreProducts: ${error}`);
-      // Fallback to DB if cache fails
-      const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
-      const paginator = buildPaginator({
-        entity: Product,
-        alias: 'product',
-        paginationKeys: ['created_at'],
-        query: { limit, order: 'DESC', afterCursor, beforeCursor },
-      });
-      const { data = [], cursor = {} } = await paginator.paginate(queryBuilder);
-      const metaDto = new CursorPaginationDto(
-        data.length,
-        (cursor as any)?.afterCursor ?? '',
-        (cursor as any)?.beforeCursor ?? '',
-        reqDto,
-      );
-      return new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
+    );
+    if (result == null) {
+      throw new NotFoundException('Cursor product list not found');
     }
+    return result;
   }
 
   /**
@@ -160,9 +136,9 @@ export class ProductService {
         return { ...metaCache, ...priceCache, variants: variantsCache } as Product;
       }
 
-      const db = await getOrSetCache( this.redisService,  `product:db:${id}`, 10, async () => {
+      const db = await getOrSetCache( this.redisService,  `product:${id}:detail`, 120, async () => {
         return Optional.of(await this.productRepository.repository.findOne({where: { id }, relations: ['variants']}))
-          .throwIfNullable(new NotFoundException(`Product with id ${id} not found after update attempt`))
+          .throwIfNullable(new NotFoundException(`Product with id ${id} not found`))
           .get<Product>()
         }
       );
@@ -256,7 +232,7 @@ export class ProductService {
     }
     const updated = await this.productRepository.updateProduct(id, data);
     const product = Optional.of(updated)
-      .throwIfNullable(new NotFoundException('Product not found after update attempt'))
+      .throwIfNullable(new NotFoundException('Product not found'))
       .get<Product>();
 
     product.variants = await this.variantRepository.findByProductId(id);

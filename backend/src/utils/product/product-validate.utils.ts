@@ -40,6 +40,7 @@ export async function invalidateProductCache(
       redisService.del(getProductMetaCacheKey(productId)),
       redisService.del(getProductPriceCacheKey(productId)),
       redisService.del(getVariantsCacheKey(productId)),
+      redisService.del(`product:product:${productId}`),
     ]);
     logger.info(`Cache invalidated for product ${productId}`);
   } catch (error) {
