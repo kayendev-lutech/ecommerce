@@ -1,4 +1,4 @@
-import { WrapperClass } from '@utils/wrapper.util';
+import { WrapperClass, WrapperClasss } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { CategoryController } from './controller/category.controller';
 import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
@@ -10,7 +10,7 @@ const router = Router();
 
 const categoryController = Container.get(CategoryController);
 
-const wrappedCategoryController = new WrapperClass(
+const wrappedCategoryController = new WrapperClasss(
   categoryController,
 ) as unknown as CategoryController & { [key: string]: any };
 /**
@@ -111,11 +111,11 @@ router.post(
  *       200:
  *         description: Danh mục đã được cập nhật
  */
-router.put(
-  '/:id',
-  validateRequest(UpdateCategoryDto),
-  wrappedCategoryController.update
-);
+// router.put(
+//   '/:id',
+//   validateRequest(UpdateCategoryDto),
+//   wrappedCategoryController.update
+// );
 
 /**
  * @swagger

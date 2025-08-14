@@ -8,7 +8,6 @@ import { OrderDirection } from '@common/order.enum';
 
 export class VariantController {
   private variantService = new VariantService();
-
   /**
    * Get variants by product_id (required query param)
    */

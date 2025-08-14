@@ -1,19 +1,17 @@
-import { UpdateCategoryDto } from './../dto/update-category.dto';
-import { CreateCategoryDto } from './../dto/create-category.dto';
+import { UpdateCategoryDto } from '@module/category/dto/update-category.dto';
+import { CreateCategoryDto } from '@module/category/dto/create-category.dto';
 import { Category } from '@module/category/entity/category.entity';
-import { BadRequestException, ConflictException, NotFoundException } from '@errors/app-error';
+import { ConflictException, NotFoundException } from '@errors/app-error';
 import { Inject, Service } from 'typedi';
-import { CategoryRepository } from '@module/category/repository/category.respository';
-import { Container } from 'typedi';
+import { CategoryRepository } from '@module/category/repository/category.repository';
 import { Optional } from '@utils/optional.utils';
 
 @Service()
 export class CategoryService {
-  private readonly categoryRepository: CategoryRepository;
-
-  constructor() {
-    this.categoryRepository = Container.get(CategoryRepository);
-  }
+  constructor(
+    @Inject(() => CategoryRepository)
+    private readonly categoryRepository: CategoryRepository
+  ) {}
 
   /**
    * Retrieves all categories.
@@ -106,18 +104,4 @@ export class CategoryService {
   async getByParentId(parentId: number): Promise<Category[]> {
     return this.categoryRepository.findByParentId(parentId);
   }
-
-  /**
-   * Updates a category's thumbnail image.
-   * @param id Category ID
-   * @param imageUrl New image URL
-   * @returns Updated category
-   * @throws NotFoundException if category not found
-   */
-  // async updateCategoryImage(id: string, imageUrl: string): Promise<Category> {
-  //   await this.getByIdOrFail(id);
-  //   const updated = await this.categoryRepository.updateCategory(id, { thumbnail: imageUrl });
-  //   return ensureFound(updated, 'Category not found');
-  // }
 }
-

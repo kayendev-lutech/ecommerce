@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { handleError, handleSuccess } from './response.util';
+import Container from 'typedi';
 
 /**
  * Interface representing a normalized request object for controller methods.
@@ -27,7 +28,7 @@ type ControllerMethod<B = any, H = any, P = any, Q = any> = (
 
 export type WrappedController<T> = T & { [key: string]: any };
 
-export class WrapperClass<T extends Record<string, any>> {
+export class WrapperClasss<T extends Record<string, any>> {
   private instance: T;
   /**
    * Constructs a WrapperClass instance and returns a Proxy that wraps controller methods.
@@ -67,6 +68,40 @@ export class WrapperClass<T extends Record<string, any>> {
         }
         return originalMethod;
       },
-    }) as unknown as WrapperClass<T> & T;
+    }) as unknown as WrapperClasss<T> & T;
+  }
+  static wrap<T extends Record<string, any>>(controllerClass: new (...args: any[]) => T): WrapperClasss<T> & T {
+    const instance = Container.get(controllerClass);
+    return new WrapperClasss(instance) as WrapperClasss<T> & T;
   }
 }
+
+export class WrapperClass {
+  static wrap<T extends object>(ControllerClass: new (...args: any[]) => T): any {
+    const instance = Container.get(ControllerClass);
+    return new Proxy(instance, {
+      get(target: T, prop) {
+        const original = target[prop as keyof T];
+        if (typeof original === "function") {
+          return async (req: Request, res: Response) => {
+            try {
+              const result = await (original as any).call(target, {
+                body: req.body,
+                headers: req.headers,
+                params: req.params,
+                query: req.query,
+                user: (req as any).user,
+              });
+              handleSuccess(res, result);
+            } catch (err) {
+              handleError(res, err);
+            }
+          };
+        }
+        return original;
+      }
+    });
+  }
+}
+
+
