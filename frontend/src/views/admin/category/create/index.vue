@@ -5,34 +5,49 @@ import { Icon } from '@iconify/vue'
 import { ref } from 'vue'
 
 const categoryName = ref('')
-const description = ref('')
-const status = ref('published')
-const storeTemplate = ref('default')
-const metaTagTitle = ref('')
-const metaTagDescription = ref('')
-const metaTagKeywords = ref('')
-const productAssignmentMethod = ref('manual')
 const slug = ref('')
+const description = ref('')
+const parentId = ref(null)
+const sortOrder = ref(0)
+const isActive = ref(true)
+const metadata = ref('') // Store as string for textarea binding
+const metaTagKeywords = ref('')
 
+// Sidebar options (unchanged)
 const statusOptions = [
     { value: 'published', label: 'Published', color: 'green' },
     { value: 'draft', label: 'Draft', color: 'gray' },
     { value: 'scheduled', label: 'Scheduled', color: 'blue' }
 ]
-
 const storeTemplateOptions = [
     { value: 'default', label: 'Default template' },
     { value: 'minimal', label: 'Minimal template' },
     { value: 'detailed', label: 'Detailed template' }
 ]
 
+// Status and template (unchanged)
+const status = ref('published')
+const storeTemplate = ref('default')
+
 const handleSave = async () => {
     try {
+        let parsedMetadata = {}
+        if (metadata.value.trim()) {
+            try {
+                parsedMetadata = JSON.parse(metadata.value)
+            } catch (err) {
+                window.$niceAlert?.error?.('Metadata phải là JSON hợp lệ!')
+                return
+            }
+        }
         await apiCreateCategory({
             name: categoryName.value,
             slug: slug.value,
             description: description.value,
-            parent_id: null // hoặc null nếu không có danh mục cha
+            parent_id: parentId.value ? Number(parentId.value) : null,
+            sort_order: Number(sortOrder.value),
+            is_active: !!isActive.value,
+            metadata: parsedMetadata
         })
         window.$niceAlert?.success?.('Tạo danh mục thành công!')
         router.push(RoutePath.AdminCategorySub)
@@ -85,7 +100,7 @@ const handleThumbnailUpload = (event: Event) => {
                 <h3 class="section-title">Status</h3>
                 <div class="status-container">
                     <div class="status-indicator" :class="`status-${status}`"></div>
-                    <select v-model="status" class="status-select">
+                    <select v-model="status" class="status-select" name="status">
                         <option
                             v-for="option in statusOptions"
                             :key="option.value"
@@ -101,7 +116,7 @@ const handleThumbnailUpload = (event: Event) => {
             <!-- Store Template Section -->
             <div class="sidebar-section">
                 <h3 class="section-title">Store Template</h3>
-                <select v-model="storeTemplate" class="form-select">
+                <select v-model="storeTemplate" class="form-select" name="store_template">
                     <option
                         v-for="option in storeTemplateOptions"
                         :key="option.value"
@@ -119,79 +134,138 @@ const handleThumbnailUpload = (event: Event) => {
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- General Section -->
-            <div class="main-content-section">
-                <h2 class="panel-title">General</h2>
+            <div>
+                <!-- General Section -->
+                <div class="main-content-section">
+                    <h2 class="panel-title">General</h2>
 
-                <div class="form-group">
-                    <label class="form-label required">Category Name</label>
-                    <input
-                        v-model="categoryName"
-                        type="text"
-                        class="form-input"
-                        placeholder="Product name"
-                    />
-                    <p class="form-help">
-                        A category name is required and recommended to be unique.
-                    </p>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <div class="editor-toolbar">
-                        <button class="toolbar-btn">Normal</button>
-                        <div class="toolbar-divider"></div>
-                        <button class="toolbar-btn"><Icon icon="ph:text-b" /></button>
-                        <button class="toolbar-btn"><Icon icon="ph:text-italic" /></button>
-                        <button class="toolbar-btn"><Icon icon="ph:text-underline" /></button>
-                        <button class="toolbar-btn"><Icon icon="ph:link" /></button>
-                        <button class="toolbar-btn"><Icon icon="ph:list-bullets" /></button>
-                        <button class="toolbar-btn"><Icon icon="ph:code" /></button>
+                    <div class="form-group">
+                        <label class="form-label required" for="categoryName">Category Name</label>
+                        <input
+                            v-model="categoryName"
+                            type="text"
+                            class="form-input"
+                            name="name"
+                            id="categoryName"
+                            placeholder="Category name"
+                        />
+                        <p class="form-help">
+                            A category name is required and recommended to be unique.
+                        </p>
                     </div>
-                    <textarea
-                        v-model="description"
-                        class="form-textarea"
-                        placeholder="Type your text here..."
-                        rows="6"
-                    ></textarea>
-                    <p class="form-help">
-                        Set a description to the category for better visibility.
-                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="slug">Slug</label>
+                        <input
+                            v-model="slug"
+                            type="text"
+                            class="form-input"
+                            name="slug"
+                            id="slug"
+                            placeholder="Slug"
+                        />
+                        <p class="form-help">
+                            Set a slug title. Recommended to be simple and precise keywords.
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="description">Description</label>
+                        <div class="editor-toolbar">
+                            <button class="toolbar-btn">Normal</button>
+                            <div class="toolbar-divider"></div>
+                            <button class="toolbar-btn"><Icon icon="ph:text-b" /></button>
+                            <button class="toolbar-btn"><Icon icon="ph:text-italic" /></button>
+                            <button class="toolbar-btn"><Icon icon="ph:text-underline" /></button>
+                            <button class="toolbar-btn"><Icon icon="ph:link" /></button>
+                            <button class="toolbar-btn"><Icon icon="ph:list-bullets" /></button>
+                            <button class="toolbar-btn"><Icon icon="ph:code" /></button>
+                        </div>
+                        <textarea
+                            v-model="description"
+                            class="form-textarea"
+                            name="description"
+                            id="description"
+                            placeholder="Type your text here..."
+                            rows="6"
+                        ></textarea>
+                        <p class="form-help">
+                            Set a description to the category for better visibility.
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="parentId">Parent Category ID</label>
+                        <input
+                            v-model="parentId"
+                            type="number"
+                            class="form-input"
+                            name="parent_id"
+                            id="parentId"
+                            placeholder="Parent category ID"
+                        />
+                        <p class="form-help">Set parent category ID if this is a sub-category.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="sortOrder">Sort Order</label>
+                        <input
+                            v-model="sortOrder"
+                            type="number"
+                            class="form-input"
+                            name="sort_order"
+                            id="sortOrder"
+                            placeholder="Sort order"
+                        />
+                        <p class="form-help">Set the sort order for this category.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="isActive">Active</label>
+                        <input
+                            type="checkbox"
+                            v-model="isActive"
+                            name="is_active"
+                            id="isActive"
+                            class="form-input"
+                        />
+                        <p class="form-help">Check if the category is active.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="metadata">Metadata (JSON)</label>
+                        <textarea
+                            v-model="metadata"
+                            class="form-textarea"
+                            name="metadata"
+                            id="metadata"
+                            placeholder='{"key":"value"}'
+                            rows="3"
+                        ></textarea>
+                        <p class="form-help">Add any extra metadata for this category.</p>
+                    </div>
+                </div>
+
+                <!-- Meta Tag Keywords Section -->
+                <div class="main-content-section">
+                    <h2 class="panel-title">Meta Options</h2>
+                    <div class="form-group">
+                        <label class="form-label" for="metaTagKeywords">Meta Tag Keywords</label>
+                        <input
+                            v-model="metaTagKeywords"
+                            type="text"
+                            class="form-input"
+                            name="meta_tag_keywords"
+                            id="metaTagKeywords"
+                            placeholder="Enter keywords..."
+                        />
+                        <p class="form-help">
+                            Set a list of keywords that the category is related to. Separate the
+                            keywords by adding a comma (,) between each keyword.
+                        </p>
+                    </div>
                 </div>
             </div>
-
-            <!-- Meta Options Section -->
-            <div class="main-content-section">
-                <h2 class="panel-title">Meta Options</h2>
-
-                <div class="form-group">
-                    <label class="form-label">Slug</label>
-                    <input
-                        v-model="metaTagTitle"
-                        type="text"
-                        class="form-input"
-                        placeholder="Meta tag name"
-                    />
-                    <p class="form-help">
-                        Set a slug title. Recommended to be simple and precise keywords.
-                    </p>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Meta Tag Keywords</label>
-                    <input
-                        v-model="metaTagKeywords"
-                        type="text"
-                        class="form-input"
-                        placeholder="Enter keywords..."
-                    />
-                    <p class="form-help">
-                        Set a list of keywords that the category is related to. Separate the
-                        keywords by adding a comma (,) between each keyword.
-                    </p>
-                </div>
-            </div>
-
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <button @click="handleCancel" class="btn-cancel">Cancel</button>
@@ -345,9 +419,11 @@ const handleThumbnailUpload = (event: Event) => {
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     border: 1px solid #e2e8f0;
-    overflow: hidden;
+    /* FIX: Changed from 'hidden' to 'auto' to allow scrolling */
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     min-height: calc(100vh - 48px);
 }
 
@@ -492,8 +568,10 @@ const handleThumbnailUpload = (event: Event) => {
     gap: 12px;
     padding: 24px;
     border-top: 1px solid #e2e8f0;
-    background: #f8fafc;
+    background: #f8fafc; /* Changed background for better consistency */
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
 }
 
 .btn-cancel {

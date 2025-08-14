@@ -8,21 +8,41 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { FormControl, FormField, FormItem } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { toTypedSchema } from '@vee-validate/zod'
 import { ChevronDown } from 'lucide-vue-next'
+import { useForm } from 'vee-validate'
+import { watch } from 'vue'
+import * as z from 'zod'
 
-const props = defineProps<{ table: any }>()
+const props = defineProps<{
+    table: any
+    loading?: boolean
+}>()
+
+const formSchema = toTypedSchema(z.object({ searchTerm: z.string() }))
+const form = useForm({
+    validationSchema: formSchema,
+    initialValues: { searchTerm: '' }
+})
+
+watch(
+    () => form.values.searchTerm,
+    (newValue) => {
+        props.table.getColumn('name')?.setFilterValue(newValue || '')
+    }
+)
 </script>
 
 <template>
     <div class="flex items-center py-4">
         <FormField v-slot="{ componentField }" name="searchTerm">
-            <FormItem class="w-full max-w-sm">
+            <FormItem class="flex-1">
                 <FormControl>
                     <Input
-                        type="text"
-                        placeholder="Filter products..."
+                        placeholder="Search products..."
                         v-bind="componentField"
-                        class="rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-emerald-500 bg-white shadow-sm"
+                        :disabled="loading"
+                        class="max-w-sm"
                     />
                 </FormControl>
             </FormItem>
