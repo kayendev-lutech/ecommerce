@@ -1,13 +1,10 @@
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
 import { ConflictException, NotFoundException } from '@errors/app-error';
-import { ensureFound } from '@utils/entity-check.util';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { Optional } from '@utils/optional.utils';
 import { ListVariantReqDto } from '@module/variant/dto/list-variant-req.dto';
-import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
 import { VariantResDto } from '@module/variant/dto/variant.res.dto';
-import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
 import { plainToInstance } from 'class-transformer';
 import { CreateVariantDto } from '@module/variant/dto/create-variant.dto';
 import { UpdateVariantDto } from '@module/variant/dto/update-variant.dto';

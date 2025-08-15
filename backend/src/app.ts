@@ -18,7 +18,11 @@ import categoryRoute from '@module/category/category.route';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
 import { swaggerOptions } from './swagger.config';
-
+import { useExpressServer } from 'routing-controllers';
+import { CategoryController } from '@module/category/controller/category.controller';
+import { useContainer } from 'routing-controllers';
+import Container from 'typedi';
+// useContainer(Container); 
 const app = express();
 app.set('trust proxy', 1);
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
@@ -32,16 +36,22 @@ app.use('/api/v1/product', productRoute);
 
 app.use('/api/v1/category', categoryRoute);
 
+useExpressServer(app, {
+  routePrefix: '/api/v1',
+  controllers: [CategoryController],
+  defaultErrorHandler: false, // We'll use our custom error handler
+});
+
 app.use(generateDeviceIdMiddleware());
 app.use(apiWatcher);
 app.use(globalLimiter);
 
-app.get('/', (_req, res) => res.send('Welcome to the Express TypeScript App!'));
 
 app.use('/api/v1/auth', authLimiter, authRoute);
 app.use('/api/v1/user', userRoute);
 app.use('/api/v1/variant', variantRoute);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/', (_req, res) => res.send('Welcome to the Express TypeScript App!'));
 
 app.use(notFoundHandler);
 

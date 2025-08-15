@@ -71,4 +71,16 @@ export class ProductController {
 
     return HttpResponse.ok(updatedProduct, 'Image uploaded successfully');
   }
+  async uploadImageAsync({ params, file }: FileUploadRequest) {
+    if (!file) {
+      throw new BadRequestException('No image file provided');
+    }
+
+    const result = await this.productService.uploadProductImageAsync(Number(params.id), file);
+
+    return HttpResponse.accepted(
+      { jobId: result.jobId, productId: result.productId },
+      result.message,
+    );
+  }
 }

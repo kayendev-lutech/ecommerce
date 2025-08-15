@@ -1,17 +1,17 @@
-import { WrapperClass } from '@utils/wrapper.util';
+import { WrapperClasss } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { ProductController } from '@module/product/controller/product.controller';
 // Validate dto
 import { validateRequest } from '@middlewares/dto-validator';
 import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
-import { uploadProductImage } from '@middlewares/cloudinary-upload.middleware';
+import { uploadProductImage, uploadProductImageAsync } from '@middlewares/cloudinary-upload.middleware';
 import { UpdateProductDto } from '@module/product/dto/update-product.dto';
 import { CreateProductDto } from '@module/product/dto/create-product.dto';
 import { IdParamDto } from '@module/product/dto/id-param.dto';
 import { ListProductReqDto } from './dto/list-product-req.dto';
 import { LoadMoreProductsReqDto } from './dto/load-more-products-req.dto';
 const router = Router();
-const wrappedProductController = new WrapperClass(
+const wrappedProductController = new WrapperClasss(
   new ProductController(),
 ) as unknown as ProductController & { [key: string]: any };
 /**
@@ -197,8 +197,8 @@ router.delete('/:id', wrappedProductController.delete);
 router.post(
   '/:id/upload-image',
   validateRequest(IdParamDto, 'params'),
-  uploadProductImage.single('image'),
-  wrappedProductController.uploadImage,
+  uploadProductImageAsync.single('image'),
+  wrappedProductController.uploadImageAsync,
 );
 
 export default router;
