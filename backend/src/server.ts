@@ -5,6 +5,7 @@ import { AppDataSource } from '@config/typeorm.config';
 import { logger } from './logger/logger';
 import { port } from '@constants/env.constants';
 import { RedisConfig } from '@config/redis.config.js';
+import { RabbitMQConfig } from './queue/config/rabbitmq.config.js';
 
 dotenv.config();
 
@@ -17,6 +18,9 @@ const startServer = async () => {
     logger.info('Database connected successfully');
 
     await RedisConfig.getInstance().connect();
+
+    await RabbitMQConfig.getInstance().connect();
+
     app.listen(PORT, () => {
       logger.info(`Server is running on http://localhost:${PORT}`);
     });
