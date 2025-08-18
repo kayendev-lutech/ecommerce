@@ -27,6 +27,7 @@
       "@common/*": ["src/common/*"],
       "@decorators/*": ["src/decorators/*"],
       "@services/*": ["src/services/*"],
+      "@cache/*": ["src/cache/*"]
     }
   },
   "include": ["src/**/*", "src/swagger.config.ts"],

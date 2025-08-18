@@ -1,10 +1,10 @@
-import { JobData } from '../services/queue.service';
 import { CloudinaryService } from '@services/cloudinary.service';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { RedisService } from '@services/redis.service';
 import { getProductMetaCacheKey, invalidateProductListCache } from '@utils/product/product-cache.utils';
 import { logger } from '@logger/logger';
 import { UploadImageJobPayload } from '../jobs/upload-image.job';
+import { JobData } from '../interface/job-data.interface';
 
 export class ImageUploadProcessor {
   private cloudinaryService = new CloudinaryService();

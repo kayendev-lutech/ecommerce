@@ -2,7 +2,7 @@ import { RabbitMQConfig } from './config/rabbitmq.config';
 import { QueueService } from './services/queue.service';
 import { ImageUploadProcessor } from './processors/image-upload.processor';
 import { logger } from '@logger/logger';
-import { AppDataSource } from '@config/typeorm.config'; // Thêm dòng này
+import { AppDataSource } from '@config/typeorm.config';
 
 class QueueWorker {
   private queueService = new QueueService();

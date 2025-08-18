@@ -1,21 +1,18 @@
 import { RabbitMQConfig } from '../config/rabbitmq.config';
 import { logger } from '@logger/logger';
-
-export interface JobData {
-  id: string;
-  type: string;
-  payload: any;
-  retries?: number;
-  maxRetries?: number;
-  createdAt?: Date;
-}
+import { JobData } from '../interface/job-data.interface';
 
 export class QueueService {
   private rabbitMQ = RabbitMQConfig.getInstance();
-
+ /**
+   * Đẩy một job vào queue RabbitMQ.
+   * @param queueName Tên queue
+   * @param jobData Dữ liệu job
+   * @throws Nếu có lỗi khi gửi job vào queue
+   */
   async addJob(queueName: string, jobData: JobData): Promise<void> {
     try {
-      const channel = this.rabbitMQ.getChannel();
+      const channel = await this.rabbitMQ.getChannel();
       const message = Buffer.from(JSON.stringify({
         ...jobData,
         createdAt: new Date(),
@@ -34,13 +31,19 @@ export class QueueService {
       throw error;
     }
   }
-
+  /**
+   * Lắng nghe và xử lý các job từ queue RabbitMQ.
+   * Tự động retry nếu job lỗi, chuyển vào dead-letter queue nếu vượt quá số lần retry.
+   * @param queueName Tên queue
+   * @param processor Hàm xử lý từng job (nhận vào JobData)
+   * @throws Nếu có lỗi khi thiết lập consumer
+   */
   async processQueue(
     queueName: string, 
     processor: (data: JobData) => Promise<void>
   ): Promise<void> {
     try {
-      const channel = this.rabbitMQ.getChannel();
+      const channel = await this.rabbitMQ.getChannel();
       
       await channel.prefetch(1); // Process one job at a time
       

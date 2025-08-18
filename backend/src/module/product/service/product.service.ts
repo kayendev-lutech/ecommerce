@@ -31,15 +31,25 @@ import {
 import { QueueService } from 'src/queue/services/queue.service';
 import { UploadImageJob, UploadImageJobPayload } from 'src/queue/jobs/upload-image.job';
 import sharp from 'sharp';
+import { CacheManager } from '@cache/managers/cache.manager';
+import { ProductCacheStrategy } from '@cache/strategies/product-cache-strategy';
+import { CacheInvalidate } from '@cache/decorators/cacheable.decorator';
 
 export class ProductService {
   private productRepository = new ProductRepository();
   private variantRepository = new VariantRepository();
-  private redisService = new RedisService();
   private queueService = new QueueService();
+  private cacheManager = CacheManager.getInstance();
+  private productCache: ProductCacheStrategy;
 
+  constructor() {
+    this.productCache = this.cacheManager.getProductCache();
+  }
   public getQueryBuilder(alias: string) {
     return this.productRepository.repository.createQueryBuilder(alias);
+  }
+  public get redisService() {
+    return this.productCache['redisService'];
   }
   /**
    * Retrieves a paginated list of products with optional search, sorting, and additional filters.
@@ -50,7 +60,7 @@ export class ProductService {
   ): Promise<OffsetPaginatedDto<ProductResDto>> {
     const cacheKey = generateListCacheKey(reqDto);
 
-    const result = await getOrSetCache( this.redisService, cacheKey, 180, async () => {
+    const result = await getOrSetCache( this.redisService, cacheKey, this.productCache['config'].listTTL, async () => {
         logger.info(`Product list cache miss, querying DB: ${cacheKey}`);
         const { data, total } = await this.productRepository.findWithPagination(reqDto);
         const metaDto = new OffsetPaginationDto(total, reqDto);
@@ -78,19 +88,14 @@ export class ProductService {
       `cursor:limit:${limit}|after:${afterCursor || ''}|before:${beforeCursor || ''}`
     );
 
-    const result = await getOrSetCache(this.redisService, cursorCacheKey, 180, async () => {
+    const result = await getOrSetCache(this.redisService, cursorCacheKey, this.productCache['config'].listTTL, async () => {
         logger.info(`Cursor product list cache miss, querying DB: ${cursorCacheKey}`);
         const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
         const paginator = buildPaginator({
           entity: Product,
           alias: 'product',
           paginationKeys: ['created_at'],
-          query: {
-            limit,
-            order: 'DESC',
-            afterCursor,
-            beforeCursor,
-          },
+          query: { limit, order: 'DESC', afterCursor, beforeCursor },
         });
         const { data = [], cursor = {} } = await paginator.paginate(queryBuilder);
         const metaDto = new CursorPaginationDto(
@@ -125,52 +130,33 @@ export class ProductService {
    * - Only queries DB if any cache part is missing.
    */
   async getById(id: number): Promise<Product | null> {
-    const metaKey = getProductMetaCacheKey(id);
-    const priceKey = getProductPriceCacheKey(id);
-    const variantsKey = getVariantsCacheKey(id);
-
     try {
-      const [metaCache, priceCache, variantsCache] = await Promise.all([
-        this.redisService.get<Partial<Product>>(metaKey),
-        this.redisService.get<Partial<Product>>(priceKey),
-        this.redisService.get<Variant[]>(variantsKey),
-      ]);
-
-      if (metaCache && priceCache && variantsCache) {
-        return { ...metaCache, ...priceCache, variants: variantsCache } as Product;
+      const cached = await this.productCache.get(id);
+      if (cached) {
+        return cached;
       }
 
-      const db = await getOrSetCache( this.redisService,  `product:${id}:detail`, 120, async () => {
-        return Optional.of(await this.productRepository.repository.findOne({where: { id }, relations: ['variants']}))
-          .throwIfNullable(new NotFoundException(`Product with id ${id} not found`))
-          .get<Product>()
+      const product = await getOrSetCache( this.redisService, `product:${id}:detail`, this.productCache['config'].GetOrSetTTL , async () => {
+          const dbProduct = await this.productRepository.repository.findOne({
+            where: { id },
+            relations: ['variants']
+          });
+          
+          if (!dbProduct) return null;
+          
+          await this.productCache.set(id, dbProduct);
+          
+          return dbProduct;
         }
       );
 
-      if (!db) return null;
-
-      const metaData = pick(db, [
-        'id', 'name', 'slug', 'description', 
-        'currency_code', 'category_id', 'image_url', 
-        'created_at', 'updated_at'
-      ]);
-
-      const priceData = pick(db, ['price', 'discount_price', 'is_active', 'is_visible']);
-      const variantsData = db.variants || [];
-
-      // Set missing cache parts in parallel with different TTLs
-      await Promise.all([
-        metaCache ? null : this.redisService.set(metaKey, metaData, 60 * 60 * 24),
-        priceCache ? null : this.redisService.set(priceKey, priceData, 300),
-        variantsCache ? null : this.redisService.set(variantsKey, variantsData, 300),
-      ]);
-
-      return { ...metaData, ...priceData, variants: variantsData } as Product;
+      return product;
     } catch (error) {
       logger.error(`Error getting product ${id}:`, error);
       throw error;
     }
   }
+  @CacheInvalidate((args) => ['product:list:*'])
   async create(data: CreateProductDto): Promise<Product> {
     if (data.slug) {
       Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfExist(
@@ -213,7 +199,8 @@ export class ProductService {
     const createdProduct = await this.productRepository.repository.save(productToCreate);
 
     // Invalidate list cache after creating new product
-    await invalidateProductListCache(this.redisService);
+    await this.productCache.set(createdProduct.id, createdProduct);
+    await this.productCache.invalidateList();
     
     logger.info(`Product ${createdProduct.id} created successfully and list cache invalidated`);
 
@@ -241,51 +228,7 @@ export class ProductService {
 
     product.variants = await this.variantRepository.findByProductId(id);
 
-    // Smart cache invalidation/update
-    const priceFields = ['price', 'discount_price', 'is_active', 'is_visible'];
-    const metaFields = ['name', 'slug', 'description', 'currency_code', 'category_id', 'image_url'];
-    
-    const updatedFields = Object.keys(data);
-    const isOnlyPriceUpdate = updatedFields.every(key => priceFields.includes(key));
-    const isOnlyMetaUpdate = updatedFields.every(key => metaFields.includes(key));
-
-    if (isOnlyPriceUpdate) {
-      await this.redisService.set(
-        getProductPriceCacheKey(id),
-        {
-          price: product.price,
-          discount_price: product.discount_price,
-          is_active: product.is_active,
-          is_visible: product.is_visible,
-        },
-        300, // TTL: 5 min
-      );
-      logger.info(`Product ${id} price cache updated`);
-    } else if (isOnlyMetaUpdate) {
-      // Update cache meta info trực tiếp
-      await this.redisService.set(
-        getProductMetaCacheKey(id),
-        {
-          id: product.id,
-          name: product.name,
-          slug: product.slug,
-          description: product.description,
-          currency_code: product.currency_code,
-          category_id: product.category_id,
-          image_url: product.image_url,
-          updated_at: product.updated_at,
-        },
-        60 * 60 * 24, // TTL dài: 1 ngày
-      );
-      logger.info(`Product ${id} meta cache updated`);
-    } else {
-      await invalidateProductCache(this.redisService, getVariantsCacheKey, id);
-      logger.info(`Product ${id} all cache invalidated due to mixed field updates`);
-    }
-
-    // Invalidate list cache vì product đã thay đổi
-    await invalidateProductListCache(this.redisService);
-    logger.info(`Product list cache invalidated after updating product ${id}`);
+    await this.productCache.smartUpdate(id, data, product);
 
     return product;
   }
@@ -293,10 +236,9 @@ export class ProductService {
   async delete(id: number): Promise<void> {
     await this.getByIdOrFail(id);
     await this.productRepository.deleteProduct(id);
-    await invalidateProductCache(this.redisService, getVariantsCacheKey, id);
-    
-    // Invalidate list cache after deleting product
-    await invalidateProductListCache(this.redisService);
+    // Clear all cache for this product
+    await this.productCache.invalidate(id);
+    await this.productCache.invalidateList();
     
     logger.info(`Product ${id} deleted and all cache invalidated`);
   }
@@ -313,18 +255,12 @@ export class ProductService {
         .throwIfNullable(new NotFoundException('Product not found after update attempt'))
         .get<Product>();
 
-      const metaKey = getProductMetaCacheKey(id);
-      const cachedMeta = await this.redisService.get<Partial<Product>>(metaKey);
-      // Update meta cache with new image
-      const newMeta = {
-        ...(cachedMeta || {}),
+      await this.productCache.updateMeta(id, {
         image_url: product.image_url,
         updated_at: product.updated_at,
-      };
-
-      await this.redisService.set(metaKey, newMeta, 60 * 60 * 24);
-
-      await invalidateProductListCache(this.redisService);
+      });
+      
+      await this.productCache.invalidateList();
 
       logger.info(`Product ${id} image updated, meta cache refreshed, and list cache invalidated`);
       return product;
