@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
 import { Variant } from '@module/variant/entity/variant.entity';
 import { CurrencyCode } from '@common/currency.enum';
+import { ProductAttributeValue } from './product-attribute-value.entity';
 
 @Entity('products')
 export class Product extends BaseEntity {
@@ -38,12 +39,37 @@ export class Product extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   is_visible!: boolean;
 
-  @Column({ type: 'json', nullable: true })
-  metadata?: Record<string, any>;
+  @OneToMany(() => ProductAttributeValue, value => value.product, { cascade: true })
+  attributeValues: ProductAttributeValue[];
 
   @OneToMany(() => Variant, variant => variant.product, { 
     cascade: true, 
     eager: false
   })
   variants?: Variant[];
+  getAttributes(): Record<string, any> {
+      const result: Record<string, any> = {};
+      if (this.attributeValues) {
+        this.attributeValues.forEach(value => {
+          const attrName = value.attribute.name;
+          const dataType = value.attribute.data_type;
+          
+          // Convert value based on data type
+          switch (dataType) {
+            case 'number':
+              result[attrName] = parseFloat(value.value);
+              break;
+            case 'boolean':
+              result[attrName] = value.value === 'true';
+              break;
+            case 'date':
+              result[attrName] = new Date(value.value);
+              break;
+            default:
+              result[attrName] = value.value;
+          }
+        });
+      }
+      return result;
+    }
 }

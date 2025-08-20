@@ -7,9 +7,9 @@ import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
 import { uploadProductImage, uploadProductImageAsync } from '@middlewares/cloudinary-upload.middleware';
 import { UpdateProductDto } from '@module/product/dto/update-product.dto';
 import { CreateProductDto } from '@module/product/dto/create-product.dto';
-import { IdParamDto } from '@module/product/dto/id-param.dto';
 import { ListProductReqDto } from './dto/list-product-req.dto';
 import { LoadMoreProductsReqDto } from './dto/load-more-products-req.dto';
+import { IdParamDto } from '@common/dto/id-param.dto';
 const router = Router();
 const wrappedProductController = new WrapperClasss(
   new ProductController(),

@@ -44,9 +44,9 @@ export class ProductResDto {
   @ApiProperty({ type: 'string', format: 'date-time', required: false })
   deleted_at?: Date;
 
-  @ApiProperty({ type: Object, required: false })
-  metadata?: Record<string, any>;
-
   @ApiProperty({ type: () => [Variant], required: false })
   variants?: Variant[];
+  
+  @ApiProperty({ type: Object, required: false })
+  attributes?: Record<string, any>;
 }

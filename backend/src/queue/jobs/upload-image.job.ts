@@ -13,8 +13,8 @@ export class UploadImageJob {
     return {
       id: uuidv4(),
       type: 'UPLOAD_PRODUCT_IMAGE',
-      payload,
       maxRetries: 3,
+      payload,
     };
   }
 }

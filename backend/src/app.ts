@@ -10,6 +10,7 @@ import apiWatcher from '@middlewares/api-watcher.middleware';
 import notFoundHandler from '@middlewares/notFoundHandler';
 // Routes
 import userRoute from '@module/user/user.route';
+import orderRoute from '@module/order/order.route';
 import variantRoute from '@module/variant/variant.route';
 import authRoute from '@module/authentication/auth.route';
 import productRoute from '@module/product/product.route';
@@ -20,9 +21,6 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import { swaggerOptions } from './swagger.config';
 import { useExpressServer } from 'routing-controllers';
 import { CategoryController } from '@module/category/controller/category.controller';
-import { useContainer } from 'routing-controllers';
-import Container from 'typedi';
-// useContainer(Container); 
 const app = express();
 app.set('trust proxy', 1);
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
@@ -49,6 +47,7 @@ app.use(globalLimiter);
 
 app.use('/api/v1/auth', authLimiter, authRoute);
 app.use('/api/v1/user', userRoute);
+app.use('/api/v1/order', orderRoute);
 app.use('/api/v1/variant', variantRoute);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/', (_req, res) => res.send('Welcome to the Express TypeScript App!'));

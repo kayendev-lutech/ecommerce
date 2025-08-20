@@ -1,3 +1,4 @@
+import { CategoryRepository } from '@module/category/repository/category.repository';
 import { ProductRepository } from '@module/product/repository/product.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
 import { BadRequestException, ConflictException, NotFoundException } from '@errors/app-error.js';
@@ -34,13 +35,22 @@ import sharp from 'sharp';
 import { CacheManager } from '@cache/managers/cache.manager';
 import { ProductCacheStrategy } from '@cache/strategies/product-cache-strategy';
 import { CacheInvalidate } from '@cache/decorators/cacheable.decorator';
+import { AppDataSource } from '@config/typeorm.config';
+import { ProductAttribute } from '../entity/product-attribute.entity';
+import { ProductAttributeValue } from '../entity/product-attribute-value.entity';
+import { extractAttributesAsObject } from '@utils/product/attribute-value.util';
 
 export class ProductService {
   private productRepository = new ProductRepository();
+  private categoryRepository = new CategoryRepository();
   private variantRepository = new VariantRepository();
   private queueService = new QueueService();
   private cacheManager = CacheManager.getInstance();
   private productCache: ProductCacheStrategy;
+
+  private attributeRepository = AppDataSource.getRepository(ProductAttribute);
+  private attributeValueRepository = AppDataSource.getRepository(ProductAttributeValue);
+
 
   constructor() {
     this.productCache = this.cacheManager.getProductCache();
@@ -132,14 +142,16 @@ export class ProductService {
   async getById(id: number): Promise<Product | null> {
     try {
       const cached = await this.productCache.get(id);
-      if (cached) {
-        return cached;
-      }
+      if (cached) return cached;
 
       const product = await getOrSetCache( this.redisService, `product:${id}:detail`, this.productCache['config'].GetOrSetTTL , async () => {
           const dbProduct = await this.productRepository.repository.findOne({
             where: { id },
-            relations: ['variants']
+            relations: [
+              'variants',
+              'attributeValues',
+              'attributeValues.attribute'
+            ]
           });
           
           if (!dbProduct) return null;
@@ -150,44 +162,41 @@ export class ProductService {
         }
       );
 
-      return product;
+      return Optional.of(product)
+      .throwIfNullable(new NotFoundException('Product not found'))
+      .get<Product>();
     } catch (error) {
       logger.error(`Error getting product ${id}:`, error);
       throw error;
     }
   }
   @CacheInvalidate((args) => ['product:list:*'])
-  async create(data: CreateProductDto): Promise<Product> {
+  async create(data: CreateProductDto): Promise<ProductResDto> {
     if (data.slug) {
-      Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfExist(
-        new ConflictException('Slug already exists. Please pick another slug'),
-      );
+      Optional.of(await this.productRepository.findBySlug(data.slug))
+        .throwIfExist(new ConflictException('Slug already exists'));
     }
 
     if (data.category_id) {
-      Optional.of(await this.productRepository.findByCategoryId(data.category_id)).throwIfNullable(
+      Optional.of(await this.categoryRepository.findById(String(data.category_id))).throwIfNullable(
         new NotFoundException('Category not found'),
       );
     }
-    const { variants = [], ...productData } = data;
-    let variantsToCreate: Partial<Variant>[] = [];
-
-    if (variants.length > 0) {
-      validateVariantNames(variants);
-      variantsToCreate = buildVariantData(variants, productData as any);
-    } else {
-      variantsToCreate = [
-        {
-          name: `${productData.name} - Default`,
-          price: productData.price,
-          currency_code: productData.currency_code || 'VND',
-          stock: 0,
-          is_default: true,
-          is_active: true,
-          sort_order: 0,
-        },
-      ];
-    }
+    const { variants = [], attributes = {}, ...productData } = data;
+    const variantsToCreate =
+      variants.length > 0
+        ? buildVariantData(variants, productData as any)
+        : [
+            {
+              name: `${productData.name} - Default`,
+              price: productData.price,
+              currency_code: productData.currency_code || 'VND',
+              stock: 0,
+              is_default: true,
+              is_active: true,
+              sort_order: 0,
+            },
+          ];
 
     const productToCreate = this.productRepository.repository.create({
       ...productData,
@@ -195,17 +204,29 @@ export class ProductService {
         this.variantRepository.repository.create(variantData),
       ),
     });
+    await this.productRepository.repository.save(productToCreate);
 
-    const createdProduct = await this.productRepository.repository.save(productToCreate);
+    if (Object.keys(attributes).length > 0) {
+      await this.saveProductAttributes(productToCreate.id, attributes);
+    }
 
-    // Invalidate list cache after creating new product
-    await this.productCache.set(createdProduct.id, createdProduct);
-    await this.productCache.invalidateList();
-    
-    logger.info(`Product ${createdProduct.id} created successfully and list cache invalidated`);
+    const productWithRelations = await this.productRepository.repository.findOne({
+      where: { id: productToCreate.id },
+      relations: ['variants', 'attributeValues', 'attributeValues.attribute'],
+    });
 
-    return createdProduct;
+    const productDto = plainToInstance(ProductResDto, productWithRelations);
+    productDto.attributes = extractAttributesAsObject(productWithRelations?.attributeValues || []);
+
+    if (productWithRelations) {
+      await this.productCache.set(productDto.id, productWithRelations);
+    }
+
+    logger.info(`Product ${productDto.id} created successfully and cache updated`);
+
+    return productDto;
   }
+
   /**
    * Update product by ID.
    * Smart cache invalidation:
@@ -213,7 +234,7 @@ export class ProductService {
    * - Update meta fields → update cache meta + invalidate list cache
    * - Update variants → invalidate cache variants + invalidate list cache
    */
-  async update(id: number, data: UpdateProductDto): Promise<Product> {
+  async update(id: number, data: UpdateProductDto): Promise<ProductResDto> {
     await this.getByIdOrFail(id);
 
     if (data.slug) {
@@ -221,16 +242,34 @@ export class ProductService {
         new ConflictException('Slug already exists. Please choose another slug.'),
       );
     }
-    const updated = await this.productRepository.updateProduct(id, data);
+
+    const { attributes, ...updateData } = data;
+
+    const updated = await this.productRepository.updateProduct(id, updateData);
     const product = Optional.of(updated)
       .throwIfNullable(new NotFoundException('Product not found'))
       .get<Product>();
 
     product.variants = await this.variantRepository.findByProductId(id);
 
-    await this.productCache.smartUpdate(id, data, product);
+    if (attributes !== undefined) {
+      await this.updateProductAttributes(id, attributes);
+    }
+    const productWithAttributes = await this.productRepository.repository.findOne({
+      where: { id },
+      relations: ['variants', 'attributeValues', 'attributeValues.attribute']
+    });
 
-    return product;
+    if (productWithAttributes) {
+      const productDto = plainToInstance(ProductResDto, productWithAttributes);
+      productDto.attributes = extractAttributesAsObject(productWithAttributes.attributeValues || []);
+      await this.productCache.smartUpdate(id, data, productWithAttributes);
+      return productDto;
+    }
+
+      const productDto = plainToInstance(ProductResDto, product);
+      productDto.attributes = {};
+      return productDto;
   }
 
   async delete(id: number): Promise<void> {
@@ -308,6 +347,30 @@ export class ProductService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new ConflictException(`Error queueing image upload: ${errorMessage}`);
+    }
+  }
+  private async updateProductAttributes(productId: number, attributes: Record<string, any>): Promise<void> {
+    await this.attributeValueRepository.delete({ product_id: productId });
+
+    await this.saveProductAttributes(productId, attributes);
+  }
+  private async saveProductAttributes(productId: number, attributes: Record<string, any>): Promise<void> {
+    for (const [attributeName, value] of Object.entries(attributes)) {
+      const attribute = await this.attributeRepository.findOne({ 
+        where: { name: attributeName } 
+      });
+
+      if (attribute) {
+        const attributeValue = this.attributeValueRepository.create({
+          product_id: productId,
+          attribute_id: attribute.id,
+          value: value.toString(),
+        });
+
+        await this.attributeValueRepository.save(attributeValue);
+      } else {
+        logger.warn(`Attribute ${attributeName} not found, skipping`);
+      }
     }
   }
 }

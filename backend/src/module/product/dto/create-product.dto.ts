@@ -53,4 +53,6 @@ export class CreateProductDto {
   image_url?: string;
   
   variants?: any[];
+
+  attributes?: Record<string, any>;
 }
