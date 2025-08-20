@@ -12,6 +12,7 @@ import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto'
 import { UserResDto } from '../dto/user.res.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
 import { plainToInstance } from 'class-transformer';
+import { UpdateUserDto } from '../dto/update-user.dto';
 export class UserService {
   private userRepository: UserRepository;
 
@@ -62,7 +63,7 @@ export class UserService {
     }
   }
 
-  async updateUser(id: string, data: Partial<User>): Promise<User> {
+  async updateUser(id: string, data: UpdateUserDto): Promise<User> {
     await this.me(id);
 
     await this.userRepository.repo.update({ id }, data);

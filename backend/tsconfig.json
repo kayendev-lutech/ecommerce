@@ -26,6 +26,7 @@
       "@errors/*": ["src/errors/*"],
       "@common/*": ["src/common/*"],
       "@decorators/*": ["src/decorators/*"],
+      "@services/*": ["src/services/*"],
     }
   },
   "include": ["src/**/*", "src/swagger.config.ts"],

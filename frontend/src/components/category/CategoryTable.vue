@@ -20,8 +20,9 @@ import { computed, h, ref } from 'vue'
 import { apiDeleteCategory } from '@/api/category/category.api'
 import AlertMain from '@/components/ui/alert-dialog/AlertMain.vue'
 import { Checkbox } from '@/components/ui/checkbox'
-import { TableFilter, TableMain, TablePagination } from '@/components/ui/table'
 import type { Category } from '@/types/category.type'
+import TableFilter from '../table/TableFilter.vue'
+import TableMain from '../table/TableMain.vue'
 
 const props = defineProps<{
     categories: Category[]
@@ -185,7 +186,7 @@ const table = useVueTable({
     <div class="w-full">
         <TableFilter :table="table" />
         <TableMain :table="table" :columns="columns" />
-        <TablePagination :table="table" />
+        <!-- <TablePagination :table="table" /> -->
         <AlertMain
             :open="showDeleteDialog"
             title="Are you sure you want to delete?"

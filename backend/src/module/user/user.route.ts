@@ -1,4 +1,4 @@
-import { WrapperClass } from '@utils/wrapper.util';
+import { WrapperClasss } from '@utils/wrapper.util';
 import { Router } from 'express';
 import { UserController } from '@module/user/controller/user.controller';
 import authMiddleware from '@middlewares/auth.middleware';
@@ -7,7 +7,7 @@ import { validateRequest } from '@middlewares/dto-validator';
 import { ListUserReqDto } from './dto/list-user-req.dto';
 
 const router = Router();
-const wrappedUserController = new WrapperClass(
+const wrappedUserController = new WrapperClasss(
   new UserController(),
 ) as unknown as UserController & { [key: string]: any };
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { VariantController } from '@module/variant//controller/variant.controller';
-import { WrapperClass } from '@utils/wrapper.util.js';
+import { WrapperClasss } from '@utils/wrapper.util.js';
 import { CreateVariantDto } from '@module/variant//dto/create-variant.dto';
 import { UpdateVariantDto } from '@module/variant//dto/update-variant.dto';
 import { validateRequest } from '@middlewares/dto-validator';
@@ -8,7 +8,7 @@ import { IdParamDto } from '@module/variant/dto/variant-id-query.dto';
 import { ProductIdQueryDto } from '@module/variant/dto/product-id-query.dto';
 import { ListVariantReqDto } from './dto/list-variant-req.dto';
 const router = Router();
-const wrappedVariantController = new WrapperClass(
+const wrappedVariantController = new WrapperClasss(
   new VariantController(),
 ) as unknown as VariantController & { [key: string]: any };
 

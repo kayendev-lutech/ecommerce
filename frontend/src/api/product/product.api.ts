@@ -1,11 +1,24 @@
 import { $delete, $get, $post, $put } from '@/api'
 import { PRODUCT_ENDPOINT } from '@/api/constants'
 
-export async function apiGetProducts(params?: Record<string, any>) {
-    return $get(`${PRODUCT_ENDPOINT}`, { params }).then((resp) => resp.data)
+export async function apiGetProducts(params?: {
+    page?: number
+    limit?: number
+    search?: string
+    order?: 'ASC' | 'DESC'
+    sortBy?: string
+    category_id?: number
+}) {
+    const cleanParams = { ...params }
+    if (!cleanParams.search || cleanParams.search.length < 1) {
+        delete cleanParams.search
+    }
+
+    return $get(`${PRODUCT_ENDPOINT}`, { params: cleanParams }).then((resp) => resp.data)
 }
 
 export async function apiCreateProduct(payload: any) {
+    console.log('API Call - Create Product:', payload)
     return $post(PRODUCT_ENDPOINT, payload).then((resp) => resp.data)
 }
 
@@ -23,7 +36,5 @@ export async function apiDeleteProduct(id: string | number) {
 export async function apiUploadProductImage(id: string | number, file: File) {
     const formData = new FormData()
     formData.append('image', file)
-    return $post(`${PRODUCT_ENDPOINT}/${id}/upload-image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    }).then((resp) => resp.data)
+    return $post(`${PRODUCT_ENDPOINT}/${id}/upload-image`, formData).then((resp) => resp.data)
 }

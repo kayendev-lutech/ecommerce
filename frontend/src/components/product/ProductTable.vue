@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
-import { useForm } from 'vee-validate'
-import * as z from 'zod'
 import { apiDeleteProduct } from '@/api/product/product.api'
-import AlertMain from '@/components/ui/alert-dialog/AlertMain.vue'
-import { Checkbox } from '@/components/ui/checkbox'
 import TableFilter from '@/components/table/TableFilter.vue'
 import TableMain from '@/components/table/TableMain.vue'
 import TablePagination from '@/components/table/TablePagination.vue'
+import AlertMain from '@/components/ui/alert-dialog/AlertMain.vue'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { Product } from '@/types/product.type'
 import { valueUpdater } from '@/utils'
 import { formatCurrency } from '@/utils/formatter'
@@ -27,7 +24,10 @@ import {
     getSortedRowModel,
     useVueTable
 } from '@tanstack/vue-table'
-import { computed, h, ref, watch } from 'vue'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+import { computed, h, ref } from 'vue'
+import * as z from 'zod'
 
 const props = defineProps<{
     products: Product[]
@@ -35,11 +35,14 @@ const props = defineProps<{
     pagination: PaginationState
     totalPages: number
     totalItems: number
+    loading?: boolean
 }>()
 
 const emit = defineEmits<{
     (e: 'action', action: string, productId: number): void
     (e: 'update:pagination', value: PaginationState): void
+    (e: 'update:search', value: string): void
+    (e: 'update:sort', sortBy: string, order: 'ASC' | 'DESC'): void
 }>()
 
 const showDeleteDialog = ref(false)
@@ -104,8 +107,16 @@ const columns: ColumnDef<Product>[] = [
 
             if (discountPrice !== null && discountPrice < price) {
                 return h('div', { class: 'flex flex-col' }, [
-                    h('span', { class: 'font-semibold text-red-600' }, formatCurrency(Number(discountPrice))),
-                    h('span', { class: 'text-xs text-gray-500 line-through' }, formatCurrency(Number(price)))
+                    h(
+                        'span',
+                        { class: 'font-semibold text-red-600' },
+                        formatCurrency(Number(discountPrice))
+                    ),
+                    h(
+                        'span',
+                        { class: 'text-xs text-gray-500 line-through' },
+                        formatCurrency(Number(price))
+                    )
                 ])
             }
             return h('div', { class: 'font-semibold' }, formatCurrency(Number(price)))
@@ -120,9 +131,7 @@ const columns: ColumnDef<Product>[] = [
                 'span',
                 {
                     class: `mr-2 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                        is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`
                 },
                 is_active ? 'Active' : 'Inactive'
@@ -131,9 +140,7 @@ const columns: ColumnDef<Product>[] = [
                 'span',
                 {
                     class: `rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        is_visible
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                        is_visible ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
                     }`
                 },
                 is_visible ? 'Visible' : 'Hidden'
@@ -209,51 +216,98 @@ function cancelDelete() {
 }
 
 const table = useVueTable({
-    get data() { return tableData.value },
+    get data() {
+        return tableData.value
+    },
     columns,
     pageCount: props.totalPages,
+    rowCount: props.totalItems,
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     onPaginationChange: (updaterOrValue) => {
-      const newValue = typeof updaterOrValue === 'function'
-        ? updaterOrValue(props.pagination)
-        : updaterOrValue;
-      emit('update:pagination', newValue);
+        const newValue =
+            typeof updaterOrValue === 'function' ? updaterOrValue(props.pagination) : updaterOrValue
+        emit('update:pagination', newValue)
     },
-    onSortingChange: (updaterOrValue) => valueUpdater(updaterOrValue, sorting),
-    onColumnFiltersChange: (updaterOrValue) => valueUpdater(updaterOrValue, columnFilters),
+    onColumnFiltersChange: (updaterOrValue) => {
+        const newFilters =
+            typeof updaterOrValue === 'function'
+                ? updaterOrValue(columnFilters.value)
+                : updaterOrValue
+        const nameFilter = newFilters.find((filter) => filter.id === 'name')
+        if (nameFilter) {
+            emit('update:search', nameFilter.value as string)
+        }
+        valueUpdater(updaterOrValue, columnFilters)
+    },
+    onSortingChange: (updaterOrValue) => {
+        const newSorting =
+            typeof updaterOrValue === 'function' ? updaterOrValue(sorting.value) : updaterOrValue
+        if (newSorting.length > 0) {
+            const { id, desc } = newSorting[0]
+            emit('update:sort', id, desc ? 'DESC' : 'ASC')
+        }
+        valueUpdater(updaterOrValue, sorting)
+    },
     onColumnVisibilityChange: (updaterOrValue) => valueUpdater(updaterOrValue, columnVisibility),
     onRowSelectionChange: (updaterOrValue) => valueUpdater(updaterOrValue, rowSelection),
     onExpandedChange: (updaterOrValue) => valueUpdater(updaterOrValue, expanded),
     state: {
-        get sorting() { return sorting.value },
-        get columnFilters() { return columnFilters.value },
-        get columnVisibility() { return columnVisibility.value },
-        get rowSelection() { return rowSelection.value },
-        get expanded() { return expanded.value },
-        get pagination() { return props.pagination }
-    },
+        get sorting() {
+            return sorting.value
+        },
+        get columnFilters() {
+            return columnFilters.value
+        },
+        get columnVisibility() {
+            return columnVisibility.value
+        },
+        get rowSelection() {
+            return rowSelection.value
+        },
+        get expanded() {
+            return expanded.value
+        },
+        get pagination() {
+            return props.pagination
+        }
+    }
 })
 
-watch(
-    () => form.values.searchTerm,
-    (newValue) => {
-        table.getColumn('name')?.setFilterValue(newValue)
-    }
-)
+// const debouncedSearch = debounce((value: string) => {
+//     emit('update:search', value)
+// }, 300)
+
+// watch(
+//     () => form.values.searchTerm,
+//     (newValue) => {
+//         const value = newValue ?? ''
+//         debouncedSearch(value)
+//     },
+//     { immediate: false }
+// )
+
+// watch(
+//     () => props.searchTerm,
+//     (newValue) => {
+//         if (newValue !== form.values.searchTerm) {
+//             form.setFieldValue('searchTerm', newValue)
+//         }
+//     }
+// )
 </script>
 
 <template>
     <div class="w-full">
-        <TableFilter :table="table" />
-
-        <TableMain :table="table" :columns="columns" />
-        <TablePagination :table="table" />
+        <TableFilter :table="table" :loading="loading" />
+        <TableMain :table="table" :columns="columns" :loading="loading" />
+        <TablePagination :table="table" :total-pages="totalPages" />
 
         <AlertMain
             :open="showDeleteDialog"
