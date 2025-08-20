@@ -122,9 +122,13 @@ A comprehensive e-commerce backend API built with Express.js and TypeScript, fea
    REDIS_PORT=6379
    
    RABBITMQ_URL=amqp://localhost:5672
+   DEBUG_CONSOLE=true
    
    JWT_ACCESS_SECRET=your_jwt_secret
    JWT_REFRESH_SECRET=your_refresh_secret
+   
+   FRONTEND_URLS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000
+   RABBITMQ_URL=amqp://localhost:5672
    
    CLOUDINARY_CLOUD_NAME=your_cloud_name
    CLOUDINARY_API_KEY=your_api_key
@@ -460,4 +464,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-<p align="center">Made with ❤️ by [Your Name/Team]</p>
+<p align="center">Made with ❤️ by Kayen</p>
