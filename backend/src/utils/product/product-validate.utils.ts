@@ -4,6 +4,7 @@ import { Variant } from '@module/variant/entity/variant.entity';
 import { RedisService } from '@services/redis.service';
 import { logger } from '@logger/logger';
 import { getProductListCacheKey, getProductMetaCacheKey, getProductPriceCacheKey } from './product-cache.utils';
+import { ProductCacheStrategy } from '@cache/strategies/product-cache-strategy';
 
 export function validateVariantNames(variants: Partial<Variant>[]) {
   const names = variants.map((v) => v.name?.trim()).filter(Boolean);
@@ -31,21 +32,10 @@ export function buildVariantData(
  * Invalidate all product cache (meta, price, variants)
  */
 export async function invalidateProductCache(
-  redisService: RedisService,
-  getVariantsCacheKey: (id: number) => string,
+  productCache: ProductCacheStrategy,
   productId: number
 ): Promise<void> {
-  try {
-    await Promise.all([
-      redisService.del(getProductMetaCacheKey(productId)),
-      redisService.del(getProductPriceCacheKey(productId)),
-      redisService.del(getVariantsCacheKey(productId)),
-      redisService.del(`product:product:${productId}`),
-    ]);
-    logger.info(`Cache invalidated for product ${productId}`);
-  } catch (error) {
-    logger.error(`Error invalidating cache for product ${productId}:`, error);
-  }
+  await productCache.invalidate(productId);
 }
 export function generateListCacheKey(reqDto: {
   page?: number;
