@@ -128,7 +128,6 @@ A comprehensive e-commerce backend API built with Express.js and TypeScript, fea
    JWT_REFRESH_SECRET=your_refresh_secret
    
    FRONTEND_URLS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000
-   RABBITMQ_URL=amqp://localhost:5672
    
    CLOUDINARY_CLOUD_NAME=your_cloud_name
    CLOUDINARY_API_KEY=your_api_key
@@ -191,9 +190,15 @@ src/
 │   ├── jobs/               # Job definitions
 │   ├── processors/         # Job processors
 │   └── config/             # Queue configuration
+│   └── services/             # Queue services
 ├── cache/                  # Caching strategies
+│   ├── decorators/         # Cache decorators
 │   ├── strategies/         # Cache implementations
 │   └── managers/           # Cache managers
+├── services/                 # External services
+│   ├── redis.service.ts      # Redis cache service
+│   ├── cloudinary.service.ts # Image upload service
+│   └── ...                   # Other services
 ├── middleware/             # Custom middleware
 ├── utils/                  # Utility functions
 ├── errors/                 # Custom error classes
@@ -215,15 +220,173 @@ src/
 - **ProductAttributeValue** - Attribute values for products
 
 ### Relationships
+
 ```mermaid
 erDiagram
-    Product ||--o{ Variant : has
-    Product ||--o{ ProductAttributeValue : has
-    ProductAttribute ||--o{ ProductAttributeValue : defines
-    Category ||--o{ Product : contains
-    User ||--o{ Order : places
-    Order ||--o{ OrderItem : contains
-    Product ||--o{ OrderItem : ordered
+    %% Core entities
+    Category {
+        int id PK
+        string name
+        string slug
+        text description
+        int parent_id FK
+        int sort_order
+        boolean is_active
+        json metadata
+    }
+    
+    Product {
+        int id PK
+        string name
+        string slug
+        text description
+        decimal price
+        decimal discount_price
+        string currency_code
+        int category_id FK
+        string image_url
+        boolean is_active
+        boolean is_visible
+        json metadata
+    }
+    
+    Variant {
+        int id PK
+        int product_id FK
+        string name
+        string sku
+        string barcode
+        decimal price
+        decimal discount_price
+        string currency_code
+        int stock
+        int stock_reserved
+        int low_stock_threshold
+        decimal weight
+        string image_url
+        boolean is_active
+        boolean is_default
+        int sort_order
+    }
+    
+    %% EAV Attribute System
+    CategoryAttribute {
+        int id PK
+        int category_id FK
+        string name
+        string type
+        boolean is_required
+        boolean is_variant_level
+        text description
+        int sort_order
+    }
+    
+    CategoryAttributeOption {
+        int id PK
+        int category_attribute_id FK
+        string option_value
+        string display_name
+        int sort_order
+    }
+    
+    ProductAttributeValue {
+        int id PK
+        int product_id FK
+        int category_attribute_id FK
+        int category_attribute_option_id FK
+        string custom_value
+    }
+    
+    VariantAttributeValue {
+        int id PK
+        int variant_id FK
+        int category_attribute_id FK
+        int category_attribute_option_id FK
+        string custom_value
+    }
+    
+    %% User and Authentication
+    User {
+        int id PK
+        string username
+        string email
+        string password_hash
+        string full_name
+        string phone
+        string avatar_url
+        string role
+        boolean is_active
+        timestamp last_login_at
+        json metadata
+    }
+    
+    Token {
+        int id PK
+        int user_id FK
+        string token_hash
+        string token_type
+        timestamp expires_at
+        boolean is_revoked
+    }
+
+    %% Order System
+    Order {
+        int id PK
+        int user_id FK
+        string order_number
+        string status
+        decimal total_amount
+        decimal tax_amount
+        decimal shipping_amount
+        decimal discount_amount
+        string currency_code
+        string shipping_address
+        string billing_address
+        string payment_method
+        string payment_status
+        timestamp order_date
+        timestamp shipped_date
+        timestamp delivered_date
+        json metadata
+    }
+    
+    OrderItem {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int variant_id FK
+        string product_name
+        string variant_name
+        decimal unit_price
+        int quantity
+        decimal total_price
+        json product_snapshot
+        json variant_snapshot
+    }
+
+    %% Relationships
+    Category ||--o{ Category : "parent-child"
+    Category ||--o{ Product : "categorizes"
+    Category ||--o{ CategoryAttribute : "defines"
+    
+    Product ||--o{ Variant : "has variants"
+    Product ||--o{ ProductAttributeValue : "has attributes"
+    Product ||--o{ OrderItem : "ordered"
+    
+    CategoryAttribute ||--o{ CategoryAttributeOption : "has options"
+    CategoryAttribute ||--o{ ProductAttributeValue : "defines product attributes"
+    CategoryAttribute ||--o{ VariantAttributeValue : "defines variant attributes"
+    
+    CategoryAttributeOption ||--o{ ProductAttributeValue : "selected for product"
+    CategoryAttributeOption ||--o{ VariantAttributeValue : "selected for variant"
+    
+    Variant ||--o{ VariantAttributeValue : "has attributes"
+    Variant ||--o{ OrderItem : "ordered as variant"
+    
+    User ||--o{ Token : "owns"
+    User ||--o{ Order : "places"
+    
+    Order ||--o{ OrderItem : "contains"
 ```
 
 ## API Documentation
