@@ -27,6 +27,6 @@ export class ProductAttribute extends BaseEntity {
   @Column({ type: 'int', default: 0 })
   sort_order: number;
 
-  @OneToMany(() => ProductAttributeValue, value => value.attribute)
+  @OneToMany(() => ProductAttributeValue, value => value.categoryAttribute.name)
   values: ProductAttributeValue[];
 }

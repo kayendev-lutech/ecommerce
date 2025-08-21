@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
+import { CategoryAttribute } from './category-attribute.entity';
 
 @Entity('categories')
 export class Category extends BaseEntity {
@@ -26,4 +27,7 @@ export class Category extends BaseEntity {
 
   @Column({ type: 'json', nullable: true })
   metadata?: Record<string, any>;
+  
+  @OneToMany(() => CategoryAttribute, attr => attr.category, { cascade: true })
+  attributes!: CategoryAttribute[];
 }

@@ -1,5 +1,5 @@
 import { RedisService } from '@services/redis.service';
-import { getOrSetCache } from '@utils/product/product-cache.utils';
+import { getOrSetCache } from '@module/product/helper/product-cache.utils';
 import { logger } from '@logger/logger';
 
 export function Cacheable(key: string | ((...args: any[]) => string), ttl: number = 300) {

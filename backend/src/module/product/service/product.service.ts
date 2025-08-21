@@ -14,7 +14,6 @@ import { buildPaginator } from '@utils/cursor-pagination';
 import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
 import { ListProductReqDto } from '@module/product/dto/list-product-req.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
-import { validateVariantNames, buildVariantData, invalidateProductCache, generateListCacheKey } from '@utils/product/product-validate.utils';
 import { CreateProductDto } from '@module/product/dto/create-product.dto';
 import { UpdateProductDto } from '@module/product/dto/update-product.dto';
 import { RedisService } from '@services/redis.service';
@@ -28,7 +27,7 @@ import {
   getProductListCacheKey,
   getOrSetCache,
   invalidateProductListCache,
-} from '@utils/product/product-cache.utils';
+} from '@module/product/helper/product-cache.utils';
 import { QueueService } from 'src/queue/services/queue.service';
 import { UploadImageJob, UploadImageJobPayload } from 'src/queue/jobs/upload-image.job';
 import sharp from 'sharp';
@@ -38,7 +37,9 @@ import { CacheInvalidate } from '@cache/decorators/cacheable.decorator';
 import { AppDataSource } from '@config/typeorm.config';
 import { ProductAttribute } from '../entity/product-attribute.entity';
 import { ProductAttributeValue } from '../entity/product-attribute-value.entity';
-import { extractAttributesAsObject } from '@utils/product/attribute-value.util';
+import { extractAttributesAsObject, hasAttributes } from '@module/product/helper/attribute-value.util';
+import { productAttributeValidator } from '@module/product/helper/product-attribute-validator';
+import { createValidatedVariants, generateListCacheKey, loadCreatedProductResult, saveVariantAttributes, validateCreateProduct, validateVariants } from '../helper/product-validate.utils';
 
 export class ProductService {
   private productRepository = new ProductRepository();
@@ -63,7 +64,8 @@ export class ProductService {
   }
   /**
    * Retrieves a paginated list of products with optional search, sorting, and additional filters.
-   * Implements cache for product lists based on filters.
+   * @param reqDto ListProductReqDto containing pagination, search, sort, and filter options
+   * @returns OffsetPaginatedDto<ProductResDto>
    */
   async getAllWithPagination(
   reqDto: ListProductReqDto,
@@ -134,10 +136,9 @@ export class ProductService {
       .get<Product>();
   }
   /**
-   * Retrieves a product by its ID, using optimized cache with lock and parallel set.
-   * - Uses cache lock to avoid thundering herd.
-   * - Sets meta, price, variants cache in parallel with different TTLs.
-   * - Only queries DB if any cache part is missing.
+   * Retrieves a product by its ID, including its variants.
+   * @param id Product ID
+   * @returns Product or throws NotFoundException if not found
    */
   async getById(id: number): Promise<Product | null> {
     try {
@@ -145,12 +146,11 @@ export class ProductService {
       if (cached) return cached;
 
       const product = await getOrSetCache( this.redisService, `product:${id}:detail`, this.productCache['config'].GetOrSetTTL , async () => {
-          const dbProduct = await this.productRepository.repository.findOne({
-            where: { id },
+          const dbProduct = await this.productRepository.repository.findOne({ where: { id },
             relations: [
               'variants',
               'attributeValues',
-              'attributeValues.attribute'
+              'attributeValues.categoryAttribute', 
             ]
           });
           
@@ -170,69 +170,68 @@ export class ProductService {
       throw error;
     }
   }
+  /**
+   * Creates a new product along with its variants in a transactional manner.
+   *
+   * @param data - Partial product data, optionally including an array of variant data.
+   * @returns A promise that resolves to the created product with its associated variants.
+   * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
+   */
   @CacheInvalidate((args) => ['product:list:*'])
-  async create(data: CreateProductDto): Promise<ProductResDto> {
-    if (data.slug) {
-      Optional.of(await this.productRepository.findBySlug(data.slug))
-        .throwIfExist(new ConflictException('Slug already exists'));
-    }
+    async create(data: CreateProductDto): Promise<ProductResDto> {
+      await validateCreateProduct(this.productRepository, this.categoryRepository, data);
 
-    if (data.category_id) {
-      Optional.of(await this.categoryRepository.findById(String(data.category_id))).throwIfNullable(
-        new NotFoundException('Category not found'),
+      const { variants = [], attributes = {}, ...productData } = data;
+
+      // Validate attributes
+      if (hasAttributes(attributes) && data.category_id) {
+        await productAttributeValidator.validateProductAttributes(data.category_id, attributes);
+      }
+
+      // Validate variants
+      if (variants.length > 0) {
+        if (data.category_id === undefined) {
+          throw new BadRequestException('Category ID is required to validate variants');
+        }
+        await validateVariants(data.category_id, variants);
+      }
+
+      const productToCreate = this.productRepository.repository.create(productData);
+      const savedProduct = Optional.of(await this.productRepository.repository.save(productToCreate))
+        .throwIfNullable(new BadRequestException('Failed to save product'))
+        .get<Product>();
+      logger.info('Product saved successfully', { productId: savedProduct.id });
+
+      // Create variants
+      await createValidatedVariants(
+        this.variantRepository,
+        saveVariantAttributes,
+        savedProduct.id,
+        variants
       );
+
+      // Save attributes nếu có
+      if (hasAttributes(attributes)) {
+        await productAttributeValidator.saveProductAttributes(savedProduct.id, attributes);
+      }
+
+      const result = await loadCreatedProductResult(
+        this.productRepository,
+        this.productCache,
+        savedProduct.id
+      );
+      logger.info(`Product ${result.id} created successfully`);
+
+      return result;
     }
-    const { variants = [], attributes = {}, ...productData } = data;
-    const variantsToCreate =
-      variants.length > 0
-        ? buildVariantData(variants, productData as any)
-        : [
-            {
-              name: `${productData.name} - Default`,
-              price: productData.price,
-              currency_code: productData.currency_code || 'VND',
-              stock: 0,
-              is_default: true,
-              is_active: true,
-              sort_order: 0,
-            },
-          ];
-
-    const productToCreate = this.productRepository.repository.create({
-      ...productData,
-      variants: variantsToCreate.map((variantData) =>
-        this.variantRepository.repository.create(variantData),
-      ),
-    });
-    await this.productRepository.repository.save(productToCreate);
-
-    if (Object.keys(attributes).length > 0) {
-      await this.saveProductAttributes(productToCreate.id, attributes);
-    }
-
-    const productWithRelations = await this.productRepository.repository.findOne({
-      where: { id: productToCreate.id },
-      relations: ['variants', 'attributeValues', 'attributeValues.attribute'],
-    });
-
-    const productDto = plainToInstance(ProductResDto, productWithRelations);
-    productDto.attributes = extractAttributesAsObject(productWithRelations?.attributeValues || []);
-
-    if (productWithRelations) {
-      await this.productCache.set(productDto.id, productWithRelations);
-    }
-
-    logger.info(`Product ${productDto.id} created successfully and cache updated`);
-
-    return productDto;
-  }
 
   /**
-   * Update product by ID.
-   * Smart cache invalidation:
-   * - Chỉ update price fields → update cache price trực tiếp + invalidate list cache
-   * - Update meta fields → update cache meta + invalidate list cache
-   * - Update variants → invalidate cache variants + invalidate list cache
+   * Cập nhật sản phẩm theo id, update attribute, invalidate cache thông minh.
+   * @param id ID sản phẩm
+   * @param data Dữ liệu cập nhật
+   * @returns ProductResDto đã cập nhật
+   * @throws NotFoundException nếu không tìm thấy
+   * @throws ConflictException nếu slug trùng
    */
   async update(id: number, data: UpdateProductDto): Promise<ProductResDto> {
     await this.getByIdOrFail(id);
@@ -245,33 +244,35 @@ export class ProductService {
 
     const { attributes, ...updateData } = data;
 
-    const updated = await this.productRepository.updateProduct(id, updateData);
-    const product = Optional.of(updated)
-      .throwIfNullable(new NotFoundException('Product not found'))
-      .get<Product>();
-
-    product.variants = await this.variantRepository.findByProductId(id);
+    await this.productRepository.updateProduct(id, updateData);
 
     if (attributes !== undefined) {
-      await this.updateProductAttributes(id, attributes);
+      await AppDataSource.getRepository('ProductAttributeValue').delete({ product_id: id });
+      await productAttributeValidator.saveProductAttributes(id, attributes);
     }
+
     const productWithAttributes = await this.productRepository.repository.findOne({
       where: { id },
-      relations: ['variants', 'attributeValues', 'attributeValues.attribute']
+      relations: ['variants', 'attributeValues', 'attributeValues.categoryAttribute'],
     });
 
-    if (productWithAttributes) {
-      const productDto = plainToInstance(ProductResDto, productWithAttributes);
-      productDto.attributes = extractAttributesAsObject(productWithAttributes.attributeValues || []);
-      await this.productCache.smartUpdate(id, data, productWithAttributes);
-      return productDto;
+    if (!productWithAttributes) {
+      throw new NotFoundException('Product not found after update');
     }
 
-      const productDto = plainToInstance(ProductResDto, product);
-      productDto.attributes = {};
-      return productDto;
+    const productDto = plainToInstance(ProductResDto, productWithAttributes);
+    productDto.attributes = extractAttributesAsObject(productWithAttributes.attributeValues || []);
+
+    await this.productCache.smartUpdate(id, data, productWithAttributes);
+
+    return productDto;
   }
 
+  /**
+   * Xóa sản phẩm theo id, xóa toàn bộ cache liên quan.
+   * @param id ID product
+   * @throws NotFoundException nếu không tìm thấy
+   */
   async delete(id: number): Promise<void> {
     await this.getByIdOrFail(id);
     await this.productRepository.deleteProduct(id);
@@ -308,13 +309,33 @@ export class ProductService {
       throw error;
     }
   }
+  /**
+   * Retrieves products using cursor-based pagination ("load more").
+   * @param reqDto LoadMoreProductsReqDto containing limit, afterCursor, beforeCursor
+   * @returns CursorPaginatedDto<ProductResDto>
+   */
   async uploadProductImageAsync(id: number, file: Express.Multer.File): Promise<{ message: string; jobId: string,productId: number }> {
     try {
-      await this.getByIdOrFail(id);
+      const product = await this.getByIdOrFail(id);
 
       if (!file || !file.buffer) {
         throw new BadRequestException('Invalid file or file buffer is missing');
       }
+
+      let oldPublicId: string | undefined = undefined;
+      if (product.image_url) {
+        const urlParts = product.image_url.split('/');
+        const uploadIndex = urlParts.findIndex(part => part === 'upload');
+        if (uploadIndex !== -1 && uploadIndex + 2 < urlParts.length) {
+          const fileNameWithExt = urlParts[uploadIndex + 2];
+          oldPublicId = fileNameWithExt.split('.')[0];
+          if (urlParts[uploadIndex + 1].startsWith('v')) {
+            oldPublicId = urlParts.slice(uploadIndex + 2).join('/').split('.')[0];
+          }
+          logger.info(`Found old image public_id for deletion: ${oldPublicId}`);
+        }
+      }
+
       const resizedBuffer = await sharp(file.buffer)
       .resize({
         width: 800,
@@ -332,6 +353,7 @@ export class ProductService {
         originalName: file.originalname,
         mimetype: file.mimetype,
         size: file.size,
+        oldPublicId
       };
 
       const job = UploadImageJob.createJob(jobPayload);
@@ -347,30 +369,6 @@ export class ProductService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new ConflictException(`Error queueing image upload: ${errorMessage}`);
-    }
-  }
-  private async updateProductAttributes(productId: number, attributes: Record<string, any>): Promise<void> {
-    await this.attributeValueRepository.delete({ product_id: productId });
-
-    await this.saveProductAttributes(productId, attributes);
-  }
-  private async saveProductAttributes(productId: number, attributes: Record<string, any>): Promise<void> {
-    for (const [attributeName, value] of Object.entries(attributes)) {
-      const attribute = await this.attributeRepository.findOne({ 
-        where: { name: attributeName } 
-      });
-
-      if (attribute) {
-        const attributeValue = this.attributeValueRepository.create({
-          product_id: productId,
-          attribute_id: attribute.id,
-          value: value.toString(),
-        });
-
-        await this.attributeValueRepository.save(attributeValue);
-      } else {
-        logger.warn(`Attribute ${attributeName} not found, skipping`);
-      }
     }
   }
 }

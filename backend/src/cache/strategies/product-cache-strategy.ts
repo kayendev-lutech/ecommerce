@@ -10,7 +10,7 @@ import {
   getProductPriceCacheKey, 
   getVariantsCacheKey,
   invalidateProductListCache 
-} from '@utils/product/product-cache.utils';
+} from '@module/product/helper/product-cache.utils';
 
 export class ProductCacheStrategy extends BaseCacheStrategy<Product> {
   constructor(redisService: RedisService, config?: Partial<ICacheConfig>) {

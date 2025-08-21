@@ -1,7 +1,7 @@
 import { CloudinaryService } from '@services/cloudinary.service';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { RedisService } from '@services/redis.service';
-import { getProductMetaCacheKey, invalidateProductListCache } from '@utils/product/product-cache.utils';
+import { getProductMetaCacheKey, invalidateProductListCache } from '@module/product/helper/product-cache.utils';
 import { logger } from '@logger/logger';
 import { UploadImageJobPayload } from '../jobs/upload-image.job';
 import { JobData } from '../interface/job-data.interface';
@@ -39,6 +39,14 @@ export class ImageUploadProcessor {
       await invalidateProductListCache(this.redisService);
 
       logger.info(`Image upload completed for product ${payload.productId}: ${uploadResult.secure_url}`);
+      if (payload.oldPublicId) {
+        try {
+          await this.cloudinaryService.deleteImage(payload.oldPublicId);
+          logger.info(`Successfully deleted old image from Cloudinary: ${payload.oldPublicId}`);
+        } catch (deleteError) {
+          logger.warn(`Failed to delete old image from Cloudinary: ${payload.oldPublicId}`, deleteError);
+        }
+      }
     } catch (error) {
       logger.error(`Error processing image upload for product ${payload.productId}:`, error);
       throw error;

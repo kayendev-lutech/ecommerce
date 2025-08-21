@@ -18,7 +18,7 @@
     "lint:fix": "eslint src --fix",
     "worker": "tsx src/queue/worker.ts",
     "worker:dev": "nodemon --exec tsx src/queue/worker.ts",
-    "migration:generate": "npx tsx node_modules/typeorm/cli.js migration:generate ./src/database/migrations/CreateAttributeValue -d ./src/config/typeorm.config.ts",
+    "migration:generate": "npx tsx node_modules/typeorm/cli.js migration:generate ./src/database/migrations/CreateVariantAttributeValues -d ./src/config/typeorm.config.ts",
     "migration:run": "npx tsx node_modules/typeorm/cli.js migration:run -d ./src/config/typeorm.config.ts",
     "seed:roles": "npx tsx src/database/seeds/001-roles.seed.ts",
     "seed:users": "npx tsx src/database/seeds/002-users.seed.ts",
@@ -28,8 +28,10 @@
     "seed:tokens": "npx tsx src/database/seeds/006-tokens.seed.ts",
     "seed:order": "npx tsx src/database/seeds/007-order.seed.ts",
     "seed:order-item": "npx tsx src/database/seeds/008-order-item.seed.ts",
-    "seed:product-attributes": "npx tsx src/database/seeds/009-product-attributes.seed.ts",
-    "seed:product-attribute-values": "npx tsx src/database/seeds/010-product-attributes-values.seed.ts"
+    "seed:category-attributes": "npx tsx src/database/seeds/009-category-attributes.seed.ts",
+    "seed:category-attribute-options": "npx tsx src/database/seeds/010-category-attribute-options.seed.ts",
+    "seed:product-attribute-values": "npx tsx src/database/seeds/011-product-attributes-values.seed.ts",
+    "seed:variant-attribute-values": "npx tsx src/database/seeds/012-variants-attributes-values.seed.ts"
   },
   "keywords": [
     "express",

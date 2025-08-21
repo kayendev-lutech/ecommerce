@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, Min, Max, Length, IsInt, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min, Max, Length, IsInt, IsBoolean, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateVariantDto {
@@ -66,6 +66,7 @@ export class CreateVariantDto {
   image_url?: string;
 
   @IsOptional()
+  @IsObject()
   attributes?: Record<string, any>;
 
   @IsOptional()

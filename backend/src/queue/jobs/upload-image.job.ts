@@ -6,6 +6,7 @@ export interface UploadImageJobPayload {
   originalName: string;
   mimetype: string;
   size: number;
+  oldPublicId?: string;
 }
 
 export class UploadImageJob {

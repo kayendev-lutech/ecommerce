@@ -1,17 +1,22 @@
 import { AppDataSource } from '@config/typeorm.config';
-import { ProductAttributeValue } from '@module/product/entity/product-attribute-value.entity';
-import { ProductAttribute } from '@module/product/entity/product-attribute.entity';
 import { Product } from '@module/product/entity/product.entity';
 import { logger } from '@logger/logger';
 
+// Các entity mới
+import { CategoryAttribute } from '@module/category/entity/category-attribute.entity';
+import { CategoryAttributeOption } from '@module/category/entity/category-attribute-option.entity';
+import { ProductAttributeValue } from '@module/product/entity/product-attribute-value.entity';
+
 export const seedProductAttributeValues = async () => {
   const valueRepo = AppDataSource.getRepository(ProductAttributeValue);
-  const attributeRepo = AppDataSource.getRepository(ProductAttribute);
+  const attributeRepo = AppDataSource.getRepository(CategoryAttribute);
+  const optionRepo = AppDataSource.getRepository(CategoryAttributeOption);
   const productRepo = AppDataSource.getRepository(Product);
 
   // Get all products and attributes
   const products = await productRepo.find();
   const attributes = await attributeRepo.find();
+  const options = await optionRepo.find();
 
   if (products.length === 0) {
     logger.warn('No products found. Please seed products first.');
@@ -19,7 +24,7 @@ export const seedProductAttributeValues = async () => {
   }
 
   if (attributes.length === 0) {
-    logger.warn('No attributes found. Please seed product attributes first.');
+    logger.warn('No category attributes found. Please seed category attributes first.');
     return;
   }
 
@@ -29,8 +34,8 @@ export const seedProductAttributeValues = async () => {
     {
       productSlug: 'iphone-14',
       values: {
-        'color': 'Đen',
-        'storage': '128GB',
+        'color': 'black',
+        'storage': '128gb',
         'brand': 'Apple',
         'weight': '0.172',
         'warranty_months': '12',
@@ -43,8 +48,8 @@ export const seedProductAttributeValues = async () => {
     {
       productSlug: 'macbook-air-m2',
       values: {
-        'color': 'Xám',
-        'storage': '256GB',
+        'color': 'gray',
+        'storage': '256gb',
         'brand': 'Apple',
         'weight': '1.24',
         'warranty_months': '12',
@@ -56,8 +61,8 @@ export const seedProductAttributeValues = async () => {
     {
       productSlug: 'samsung-galaxy-s23',
       values: {
-        'color': 'Trắng',
-        'storage': '256GB',
+        'color': 'white',
+        'storage': '256gb',
         'brand': 'Samsung',
         'weight': '0.168',
         'warranty_months': '24',
@@ -70,7 +75,7 @@ export const seedProductAttributeValues = async () => {
     {
       productSlug: 'sony-wh-1000xm5',
       values: {
-        'color': 'Đen',
+        'color': 'black',
         'brand': 'Sony',
         'weight': '0.25',
         'warranty_months': '12',
@@ -81,8 +86,8 @@ export const seedProductAttributeValues = async () => {
     {
       productSlug: 'ipad-pro-12-9',
       values: {
-        'color': 'Xám',
-        'storage': '128GB',
+        'color': 'gray',
+        'storage': '128gb',
         'brand': 'Apple',
         'weight': '0.682',
         'warranty_months': '12',
@@ -100,47 +105,73 @@ export const seedProductAttributeValues = async () => {
     }
 
     for (const [attributeName, value] of Object.entries(sampleValue.values)) {
-      const attribute = attributes.find(a => a.name === attributeName);
+      const attribute = attributes.find(a => a.name === attributeName && a.category_id === product.category_id);
       if (!attribute) {
-        logger.warn(`Attribute ${attributeName} not found, skipping`);
+        logger.warn(`Attribute ${attributeName} not found for category ${product.category_id}, skipping`);
         continue;
+      }
+
+      // Kiểm tra nếu là enum thì lưu option_id, còn lại lưu custom_value
+      let category_attribute_option_id: number | null = null;
+      let custom_value: string | null = null;
+
+      if (attribute.type === 'enum') {
+        const option = options.find(
+          o => o.category_attribute_id === attribute.id && o.option_value === value.toString().toLowerCase()
+        );
+        if (!option) {
+          logger.warn(`Option ${value} for attribute ${attributeName} not found, skipping`);
+          continue;
+        }
+        category_attribute_option_id = option.id;
+      } else {
+        custom_value = value.toString();
       }
 
       const existing = await valueRepo.findOne({
         where: {
           product_id: product.id,
-          attribute_id: attribute.id,
+          category_attribute_id: attribute.id,
         }
       });
 
       if (!existing) {
         const attributeValue = valueRepo.create({
           product_id: product.id,
-          attribute_id: attribute.id,
-          value: value.toString(),
+          category_attribute_id: attribute.id,
+          category_attribute_option_id,
+          custom_value,
         });
 
         await valueRepo.save(attributeValue);
-        logger.info(`✅ Seeded value for ${product.name} - ${attribute.display_name}: ${value}`);
+        logger.info(`✅ Seeded value for ${product.name} - ${attribute.name}: ${value}`);
       } else {
-        logger.info(`⏭️ Value for ${product.name} - ${attribute.display_name} already exists, skipping`);
+        logger.info(`⏭️ Value for ${product.name} - ${attribute.name} already exists, skipping`);
       }
     }
   }
 
   // Add some random values for remaining products
-  const remainingProducts = products.filter(p => 
+  const remainingProducts = products.filter(p =>
     !sampleValues.some(sv => sv.productSlug === p.slug)
   );
 
-  const colorAttr = attributes.find(a => a.name === 'color');
-  const brandAttr = attributes.find(a => a.name === 'brand');
-  const warrantyAttr = attributes.find(a => a.name === 'warranty_months');
+  const colorAttrs = attributes.filter(a => a.name === 'color');
+  const brandAttrs = attributes.filter(a => a.name === 'brand');
+  const warrantyAttrs = attributes.filter(a => a.name === 'warranty_months');
 
-  for (const product of remainingProducts.slice(0, 10)) { // Only first 10 to avoid too much data
+  for (const product of remainingProducts.slice(0, 10)) {
+    // Lấy attribute đúng category
+    const colorAttr = colorAttrs.find(a => a.category_id === product.category_id);
+    const brandAttr = brandAttrs.find(a => a.category_id === product.category_id);
+    const warrantyAttr = warrantyAttrs.find(a => a.category_id === product.category_id);
+
     // Add basic attributes for remaining products
     const basicAttributes = [
-      { attr: colorAttr, value: ['Đen', 'Trắng', 'Xám'][Math.floor(Math.random() * 3)] },
+      {
+        attr: colorAttr,
+        value: ['black', 'white', 'gray'][Math.floor(Math.random() * 3)]
+      },
       { attr: brandAttr, value: 'Generic' },
       { attr: warrantyAttr, value: '12' },
     ];
@@ -148,22 +179,39 @@ export const seedProductAttributeValues = async () => {
     for (const { attr, value } of basicAttributes) {
       if (!attr) continue;
 
+      let category_attribute_option_id: number | null = null;
+      let custom_value: string | null = null;
+
+      if (attr.type === 'enum') {
+        const option = options.find(
+          o => o.category_attribute_id === attr.id && o.option_value === value.toString().toLowerCase()
+        );
+        if (!option) {
+          logger.warn(`Option ${value} for attribute ${attr.name} not found, skipping`);
+          continue;
+        }
+        category_attribute_option_id = option.id;
+      } else {
+        custom_value = value.toString();
+      }
+
       const existing = await valueRepo.findOne({
         where: {
           product_id: product.id,
-          attribute_id: attr.id,
+          category_attribute_id: attr.id,
         }
       });
 
       if (!existing) {
         const attributeValue = valueRepo.create({
           product_id: product.id,
-          attribute_id: attr.id,
-          value: value,
+          category_attribute_id: attr.id,
+          category_attribute_option_id,
+          custom_value,
         });
 
         await valueRepo.save(attributeValue);
-        logger.info(`✅ Seeded basic value for ${product.name} - ${attr.display_name}: ${value}`);
+        logger.info(`✅ Seeded basic value for ${product.name} - ${attr.name}: ${value}`);
       }
     }
   }

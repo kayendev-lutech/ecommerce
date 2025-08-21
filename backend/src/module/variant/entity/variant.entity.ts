@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
 import { Product } from '@module/product/entity/product.entity';
 import { CurrencyCode } from '@common/currency.enum';
+import { VariantAttributeValue } from './variant-attribute-value.entity';
 
 @Entity('variants')
 export class Variant extends BaseEntity {
@@ -61,4 +62,7 @@ export class Variant extends BaseEntity {
   })
   @JoinColumn({ name: 'product_id' })
   product?: Product;
+  
+  @OneToMany(() => VariantAttributeValue, value => value.variant, { cascade: true })
+  attributeValues!: VariantAttributeValue[];
 }

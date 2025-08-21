@@ -39,37 +39,34 @@ export class Product extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   is_visible!: boolean;
 
-  @OneToMany(() => ProductAttributeValue, value => value.product, { cascade: true })
-  attributeValues: ProductAttributeValue[];
+  // Relations
+  @OneToMany(() => Variant, variant => variant.product, { cascade: true })
+  variants!: Variant[];
 
-  @OneToMany(() => Variant, variant => variant.product, { 
-    cascade: true, 
-    eager: false
-  })
-  variants?: Variant[];
+  @OneToMany(() => ProductAttributeValue, value => value.product, { cascade: true })
+  attributeValues!: ProductAttributeValue[];
+
+  // Helper method to get attributes as object
   getAttributes(): Record<string, any> {
-      const result: Record<string, any> = {};
-      if (this.attributeValues) {
-        this.attributeValues.forEach(value => {
-          const attrName = value.attribute.name;
-          const dataType = value.attribute.data_type;
-          
-          // Convert value based on data type
-          switch (dataType) {
-            case 'number':
-              result[attrName] = parseFloat(value.value);
-              break;
-            case 'boolean':
-              result[attrName] = value.value === 'true';
-              break;
-            case 'date':
-              result[attrName] = new Date(value.value);
-              break;
-            default:
-              result[attrName] = value.value;
-          }
-        });
-      }
-      return result;
+    const result: Record<string, any> = {};
+    if (this.attributeValues) {
+      this.attributeValues.forEach(value => {
+        const attrName = value.categoryAttribute.name;
+        const dataType = value.categoryAttribute.type;
+        const rawValue = value.getRawValue();
+        
+        switch (dataType) {
+          case 'number':
+            result[attrName] = parseFloat(rawValue);
+            break;
+          case 'boolean':
+            result[attrName] = rawValue === 'true';
+            break;
+          default:
+            result[attrName] = rawValue;
+        }
+      });
     }
+    return result;
+  }
 }
