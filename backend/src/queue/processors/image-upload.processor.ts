@@ -12,44 +12,36 @@ export class ImageUploadProcessor {
   private redisService = new RedisService();
 
   async processUploadImageJob(jobData: JobData): Promise<void> {
-    const payload: UploadImageJobPayload = jobData.payload;
-    
+    const { productId, imageBuffer, originalName, mimetype, size, oldPublicId } = jobData.payload;
+
     try {
-      logger.info(`Processing image upload for product ${payload.productId}`);
+      logger.info(`Processing image upload for product ${productId}`);
 
-      const imageBuffer = Buffer.from(payload.imageBuffer, 'base64');
-
-      const uploadResult = await this.cloudinaryService.uploadImage(imageBuffer, {
+      const buffer = Buffer.from(imageBuffer, 'base64');
+      const uploadResult = await this.cloudinaryService.uploadImage(buffer, {
         folder: 'products',
-        public_id: `product_${payload.productId}_${Date.now()}`,
+        public_id: `product_${productId}_${Date.now()}`,
       });
 
-      // Update product in database
-      const updatedProduct = await this.productRepository.updateProduct(payload.productId, {
+      const updatedProduct = await this.productRepository.updateProduct(productId, {
         image_url: uploadResult.secure_url,
       });
+      if (!updatedProduct) throw new Error(`Product ${productId} not found`);
 
-      if (!updatedProduct) {
-        throw new Error(`Product ${payload.productId} not found`);
-      }
-
-      await this.updateProductCache(payload.productId, uploadResult.secure_url, updatedProduct.updated_at);
-
-      // Invalidate list cache
+      await this.updateProductCache(productId, uploadResult.secure_url, updatedProduct.updated_at);
       await invalidateProductListCache(this.redisService);
 
-      logger.info(`Image upload completed for product ${payload.productId}: ${uploadResult.secure_url}`);
-      if (payload.oldPublicId) {
-        try {
-          await this.cloudinaryService.deleteImage(payload.oldPublicId);
-          logger.info(`Successfully deleted old image from Cloudinary: ${payload.oldPublicId}`);
-        } catch (deleteError) {
-          logger.warn(`Failed to delete old image from Cloudinary: ${payload.oldPublicId}`, deleteError);
-        }
+      logger.info(`Image upload completed for product ${productId}: ${uploadResult.secure_url}`);
+
+      if (oldPublicId) {
+        this.cloudinaryService.deleteImage(oldPublicId)
+          .then(() => logger.info(`Deleted old image: ${oldPublicId}`))
+          .catch(err => logger.warn(`Failed to delete old image ${oldPublicId}`, err));
       }
-    } catch (error) {
-      logger.error(`Error processing image upload for product ${payload.productId}:`, error);
-      throw error;
+
+    } catch (err) {
+      logger.error(`Image upload failed for product ${productId}`, err);
+      throw err;
     }
   }
 

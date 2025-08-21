@@ -1,4 +1,7 @@
+import { AppDataSource } from '@config/typeorm.config';
 import { ProductAttributeValue } from '@module/product/entity/product-attribute-value.entity';
+import { productAttributeValidator } from './product-attribute-validator';
+import { BadRequestException } from '@errors/app-error';
 
 export function extractAttributesAsObject(attributeValues: ProductAttributeValue[]): Record<string, any> {
   const result: Record<string, any> = {};
@@ -36,4 +39,23 @@ export function extractAttributesAsObject(attributeValues: ProductAttributeValue
 }
 export function hasAttributes(attributes: any): boolean {
   return attributes && Object.keys(attributes).length > 0;
+}
+export async function updateProductAttributesTransactional(
+  productId: number,
+  attributes: Record<string, any>
+): Promise<void> {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+  try {
+    await queryRunner.manager.getRepository('ProductAttributeValue').delete({ product_id: productId });
+    await productAttributeValidator.saveProductAttributes(productId, attributes);
+    await queryRunner.commitTransaction();
+  } catch (err) {
+    await queryRunner.rollbackTransaction();
+    logger.error('Failed to update product attributes in transaction', err);
+    throw new BadRequestException('Failed to update product attributes');
+  } finally {
+    await queryRunner.release();
+  }
 }

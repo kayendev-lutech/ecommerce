@@ -3,6 +3,7 @@ import { QueueService } from './services/queue.service';
 import { ImageUploadProcessor } from './processors/image-upload.processor';
 import { logger } from '@logger/logger';
 import { AppDataSource } from '@config/typeorm.config';
+import { queueRegistry } from './queue.registry';
 
 class QueueWorker {
   private queueService = new QueueService();
@@ -18,9 +19,10 @@ class QueueWorker {
       await RabbitMQConfig.getInstance().connect();
       
       // Start processing queues
-      await this.queueService.processQueue('image-upload', (jobData) =>
-        this.imageUploadProcessor.processUploadImageJob(jobData)
-      );
+      for (const { name, processor, handler } of queueRegistry) {
+        await this.queueService.processQueue(name, handler(processor));
+        logger.info(`Queue processor registered: ${name}`);
+      }
 
       logger.info('Queue worker started successfully');
     } catch (error) {

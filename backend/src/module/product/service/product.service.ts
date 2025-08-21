@@ -37,7 +37,7 @@ import { CacheInvalidate } from '@cache/decorators/cacheable.decorator';
 import { AppDataSource } from '@config/typeorm.config';
 import { ProductAttribute } from '../entity/product-attribute.entity';
 import { ProductAttributeValue } from '../entity/product-attribute-value.entity';
-import { extractAttributesAsObject, hasAttributes } from '@module/product/helper/attribute-value.util';
+import { extractAttributesAsObject, hasAttributes, updateProductAttributesTransactional } from '@module/product/helper/attribute-value.util';
 import { productAttributeValidator } from '@module/product/helper/product-attribute-validator';
 import { createValidatedVariants, generateListCacheKey, loadCreatedProductResult, saveVariantAttributes, validateCreateProduct, validateVariants } from '../helper/product-validate.utils';
 
@@ -150,6 +150,9 @@ export class ProductService {
             relations: [
               'variants',
               'attributeValues',
+              'variants.attributeValues',
+              'variants.attributeValues.categoryAttribute',
+              'variants.attributeValues.categoryAttributeOption',
               'attributeValues.categoryAttribute', 
             ]
           });
@@ -247,8 +250,7 @@ export class ProductService {
     await this.productRepository.updateProduct(id, updateData);
 
     if (attributes !== undefined) {
-      await AppDataSource.getRepository('ProductAttributeValue').delete({ product_id: id });
-      await productAttributeValidator.saveProductAttributes(id, attributes);
+      await updateProductAttributesTransactional(id, attributes);
     }
 
     const productWithAttributes = await this.productRepository.repository.findOne({
@@ -256,14 +258,14 @@ export class ProductService {
       relations: ['variants', 'attributeValues', 'attributeValues.categoryAttribute'],
     });
 
-    if (!productWithAttributes) {
-      throw new NotFoundException('Product not found after update');
-    }
+    const checkedProduct = Optional.of(productWithAttributes)
+        .throwIfNullable(new NotFoundException('Product not found after update attempt'))
+        .get<Product>();
 
-    const productDto = plainToInstance(ProductResDto, productWithAttributes);
-    productDto.attributes = extractAttributesAsObject(productWithAttributes.attributeValues || []);
+    const productDto = plainToInstance(ProductResDto, checkedProduct);
+    productDto.attributes = extractAttributesAsObject(checkedProduct.attributeValues || []);
 
-    await this.productCache.smartUpdate(id, data, productWithAttributes);
+    await this.productCache.smartUpdate(id, data, checkedProduct);
 
     return productDto;
   }
@@ -309,34 +311,23 @@ export class ProductService {
       throw error;
     }
   }
-  /**
-   * Retrieves products using cursor-based pagination ("load more").
-   * @param reqDto LoadMoreProductsReqDto containing limit, afterCursor, beforeCursor
-   * @returns CursorPaginatedDto<ProductResDto>
-   */
-  async uploadProductImageAsync(id: number, file: Express.Multer.File): Promise<{ message: string; jobId: string,productId: number }> {
-    try {
-      const product = await this.getByIdOrFail(id);
+  async uploadProductImageAsync(id: number, file: Express.Multer.File): Promise<{ message: string; jobId: string; productId: number }> {
+    const product = await this.getByIdOrFail(id);
 
-      if (!file || !file.buffer) {
-        throw new BadRequestException('Invalid file or file buffer is missing');
+    if (!file || !file.buffer) {
+      throw new BadRequestException('Invalid file or file buffer is missing');
+    }
+
+    let oldPublicId: string | undefined;
+    if (product.image_url) {
+      const matches = product.image_url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z]+$/);
+      if (matches?.[1]) {
+        oldPublicId = matches[1];
+        logger.info(`Found old image public_id for deletion: ${oldPublicId}`);
       }
+    }
 
-      let oldPublicId: string | undefined = undefined;
-      if (product.image_url) {
-        const urlParts = product.image_url.split('/');
-        const uploadIndex = urlParts.findIndex(part => part === 'upload');
-        if (uploadIndex !== -1 && uploadIndex + 2 < urlParts.length) {
-          const fileNameWithExt = urlParts[uploadIndex + 2];
-          oldPublicId = fileNameWithExt.split('.')[0];
-          if (urlParts[uploadIndex + 1].startsWith('v')) {
-            oldPublicId = urlParts.slice(uploadIndex + 2).join('/').split('.')[0];
-          }
-          logger.info(`Found old image public_id for deletion: ${oldPublicId}`);
-        }
-      }
-
-      const resizedBuffer = await sharp(file.buffer)
+    const resizedBuffer = await sharp(file.buffer)
       .resize({
         width: 800,
         height: 800,
@@ -345,30 +336,26 @@ export class ProductService {
       })
       .toBuffer();
 
-      const imageBuffer = resizedBuffer.toString('base64');
-      
-      const jobPayload: UploadImageJobPayload = {
-        productId: id,
-        imageBuffer,
-        originalName: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        oldPublicId
-      };
+    const imageBuffer = resizedBuffer.toString('base64');
+    
+    const jobPayload: UploadImageJobPayload = {
+      productId: id,
+      imageBuffer,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      oldPublicId
+    };
 
-      const job = UploadImageJob.createJob(jobPayload);
-      await this.queueService.addJob('image-upload', job);
+    const job = UploadImageJob.createJob(jobPayload);
+    await this.queueService.addJob('image-upload', job);
 
-      logger.info(`Image upload job ${job.id} queued for product ${id}`);
-      
-      return {
-        message: 'Image upload job queued successfully',
-        jobId: job.id,
-        productId: id
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new ConflictException(`Error queueing image upload: ${errorMessage}`);
-    }
+    logger.info(`Image upload job ${job.id} queued for product ${id}`);
+    
+    return {
+      message: 'Image upload job queued successfully',
+      jobId: job.id,
+      productId: id
+    };
   }
 }
