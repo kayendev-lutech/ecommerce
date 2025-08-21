@@ -1,10 +1,7 @@
 <script setup lang="ts">
-// ... Toàn bộ phần script setup của bạn đã đúng, không cần thay đổi ...
-// (Giữ nguyên onInvalidSubmit, productSchema, useForm, ...)
-import { apiCreateProduct } from '@/api/product/product.api'
+import { apiCreateProduct, apiUploadProductImage } from '@/api/product/product.api'
 import ProductCategoryForm from '@/components/product/ProductCategoryForm.vue'
 import ProductStatusForm from '@/components/product/ProductStatusForm.vue'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,15 +11,17 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import router, { RoutePath } from '@/router'
 import { toTypedSchema } from '@vee-validate/zod'
-import { ArrowLeft, Package, Settings } from 'lucide-vue-next'
+import { ArrowLeft, Package } from 'lucide-vue-next'
+import { Textarea } from '@/components/ui/textarea'
 import { useForm } from 'vee-validate'
 import { ref } from 'vue'
 import * as z from 'zod'
 
 const activeTab = ref('general')
+const selectedImageFile = ref<File | null>(null)
 
 const statusOptions = [
     { value: 'published', label: 'Published' },
@@ -41,63 +40,44 @@ const templateOptions = [
 
 const productSchema = toTypedSchema(
     z.object({
-        productName: z.string().min(1, 'Product name is required'),
+        name: z.string().min(1, 'Product name is required'),
         slug: z.string().min(1, 'Slug is required'),
         description: z.string().optional(),
-        basePrice: z.preprocess(
-            (a) => {
-                if (a === '' || a === undefined || a === null) return undefined
-                return typeof a === 'number' ? a : Number(a)
-            },
+        price: z.preprocess(
+            (a) => (a === '' || a === undefined || a === null ? undefined : Number(a)),
             z
                 .number({ invalid_type_error: 'Base price must be a number' })
                 .positive('Price must be positive')
-                .optional()
         ),
-        status: z.string(),
-        category: z
+        discount_price: z.preprocess(
+            (a) => (a === '' || a === undefined || a === null ? undefined : Number(a)),
+            z.number().optional()
+        ),
+        // currency_code: z.string().min(1, 'Currency code is required'),
+        category_id: z
             .union([z.string(), z.number()])
             .refine((val) => String(val).length > 0, { message: 'Category is required' }),
-        template: z.string(),
-        metaTitle: z.string().optional(),
-        metaDescription: z.string().optional(),
-        stockQuantity: z.preprocess(
-            (a) => {
-                if (a === '' || a === undefined || a === null) return undefined
-                return typeof a === 'number' ? a : parseInt(String(a), 10)
-            },
-            z.number({ invalid_type_error: 'Stock must be an integer' }).min(0).optional()
-        ),
-        lowStockThreshold: z.preprocess(
-            (a) => {
-                if (a === '' || a === undefined || a === null) return undefined
-                return typeof a === 'number' ? a : parseInt(String(a), 10)
-            },
-            z.number({ invalid_type_error: 'Threshold must be an integer' }).min(0).optional()
-        ),
-        mediaUrl: z
-            .string()
-            .url({ message: 'Please enter a valid URL' })
-            .optional()
-            .or(z.literal(''))
+        image_url: z.string().optional(),
+        is_active: z.boolean().optional(),
+        is_visible: z.boolean().optional(),
+        metadata: z.any().optional()
     })
 )
 
 const { handleSubmit, setFieldValue } = useForm({
     validationSchema: productSchema,
     initialValues: {
-        productName: '',
+        name: '',
         slug: '',
         description: '',
-        basePrice: undefined,
-        status: 'published',
-        category: '',
-        template: 'default',
-        metaTitle: '',
-        metaDescription: '',
-        stockQuantity: undefined,
-        lowStockThreshold: undefined,
-        mediaUrl: ''
+        price: undefined,
+        discount_price: undefined,
+        // currency_code: '',
+        category_id: '',
+        image_url: '',
+        is_active: true,
+        is_visible: true,
+        metadata: {}
     }
 })
 
@@ -112,33 +92,53 @@ function slugify(str: string) {
 
 const handleProductNameUpdate = (value: string | number) => {
     const strValue = typeof value === 'number' ? String(value) : value
-    setFieldValue('productName', strValue)
+    setFieldValue('name', strValue)
     setFieldValue('slug', slugify(strValue))
 }
 
-const onSubmit = handleSubmit(async (values) => {
+const onSubmit = handleSubmit(async (formValues) => {
+    console.log('Form values before submit:', formValues)
+
     try {
-        console.log('Validation PASSED. Submitting a new product...', values)
-        await apiCreateProduct({
-            name: values.productName,
-            slug: values.slug,
-            description: values.description,
-            price: values.basePrice,
-            status: values.status,
-            category_id: values.category,
-            template: values.template,
-            meta_title: values.metaTitle,
-            meta_description: values.metaDescription,
-            stock_quantity: values.stockQuantity,
-            low_stock_threshold: values.lowStockThreshold,
-            media_url: values.mediaUrl
-        })
+        const payload = {
+            ...formValues,
+            price: Number(formValues.price),
+            category_id: Number(formValues.category_id),
+            discount_price: formValues.discount_price ? Number(formValues.discount_price) : null,
+            image_url: '' // Tạm thời để trống, sẽ upload sau
+        }
+
+        console.log('Payload to API:', payload)
+
+        // Tạo product trước
+        const response = await apiCreateProduct(payload)
+        console.log('Product created:', response)
+
+        // Nếu có ảnh, upload ảnh sau khi tạo product
+        if (selectedImageFile.value && response.data?.id) {
+            try {
+                await apiUploadProductImage(response.data.id, selectedImageFile.value)
+                console.log('Image uploaded successfully')
+            } catch (uploadError) {
+                console.error('Image upload failed:', uploadError)
+                // Product đã tạo thành công, chỉ ảnh upload thất bại
+            }
+        }
+
         await router.push(RoutePath.AdminProductSub)
     } catch (error) {
         console.error('Create product failed:', error)
     }
 })
-
+const handleImageUpload = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
+    if (file) {
+        selectedImageFile.value = file
+        const imageUrl = URL.createObjectURL(file)
+        setFieldValue('image_url', imageUrl)
+    }
+}
 const handleCancel = () => {
     router.push(RoutePath.AdminProductSub)
 }
@@ -149,264 +149,265 @@ const handleCreateCategory = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
-        <!-- Header -->
-        <div class="bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
-            <div class="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12">
-                <div class="flex items-center justify-between h-18">
-                    <button
-                        @click="handleCancel"
-                        type="button"
-                        class="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-800 transition-all duration-200 hover:bg-slate-100 px-3 py-2 rounded-lg"
-                    >
-                        <ArrowLeft class="w-4 h-4 mr-2" />
-                        Back to Products
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12 py-10">
-            <form @submit="onSubmit">
-                <div class="grid grid-cols-1 xl:grid-cols-5 gap-10">
-                    <!-- Sidebar -->
-                    <div class="xl:col-span-1 space-y-8">
-                        <Card class="shadow-sm">
-                            <CardHeader><CardTitle>Status</CardTitle></CardHeader>
-                            <CardContent>
-                                <FormField v-slot="{ componentField, errorMessage }" name="status">
-                                    <FormItem>
-                                        <FormControl>
-                                            <!-- SỬA LỖI: Binding tường minh -->
-                                            <ProductStatusForm
-                                                :modelValue="componentField.modelValue"
-                                                @update:modelValue="
-                                                    componentField['onUpdate:modelValue']
-                                                "
-                                                :options="statusOptions"
-                                            />
-                                        </FormControl>
-                                        <FormMessage class="text-red-500">{{
-                                            errorMessage
-                                        }}</FormMessage>
-                                    </FormItem>
-                                </FormField>
-                            </CardContent>
-                        </Card>
-                        <Card class="shadow-sm">
-                            <CardHeader><CardTitle>Category</CardTitle></CardHeader>
-                            <CardContent>
-                                <FormField
-                                    v-slot="{ componentField, errorMessage }"
-                                    name="category"
-                                >
-                                    <FormItem>
-                                        <FormControl>
-                                            <!-- SỬA LỖI: Binding tường minh -->
-                                            <ProductCategoryForm
-                                                :modelValue="componentField.modelValue"
-                                                @update:modelValue="
-                                                    componentField['onUpdate:modelValue']
-                                                "
-                                                :options="categoryOptions"
-                                                @create-category="handleCreateCategory"
-                                            />
-                                        </FormControl>
-                                        <FormMessage class="text-red-500">{{
-                                            errorMessage
-                                        }}</FormMessage>
-                                    </FormItem>
-                                </FormField>
-                            </CardContent>
-                        </Card>
-                        <Card class="shadow-sm">
-                            <CardHeader><CardTitle>Template</CardTitle></CardHeader>
-                            <CardContent>
-                                <FormField
-                                    v-slot="{ componentField, errorMessage }"
-                                    name="template"
-                                >
-                                    <FormItem>
-                                        <!-- Đối với component Select của thư viện UI, v-bind vẫn an toàn -->
-                                        <Select v-bind="componentField">
-                                            <FormControl>
-                                                <SelectTrigger
-                                                    ><SelectValue placeholder="Select template"
-                                                /></SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem
-                                                    v-for="option in templateOptions"
-                                                    :key="option.value"
-                                                    :value="option.value"
-                                                    >{{ option.label }}</SelectItem
-                                                >
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage class="text-red-500">{{
-                                            errorMessage
-                                        }}</FormMessage>
-                                    </FormItem>
-                                </FormField>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <!-- Main Form -->
-                    <div class="xl:col-span-4">
-                        <!-- Cấu trúc Tabs và các FormField khác đã đúng -->
-                        <Card class="shadow-sm">
-                            <Tabs v-model="activeTab" class="w-full">
-                                <CardHeader class="pb-0">
-                                    <TabsList
-                                        class="grid grid-cols-2 w-full bg-slate-100/80 p-1 rounded-xl"
-                                    >
-                                        <TabsTrigger
-                                            value="general"
-                                            class="flex items-center gap-2 py-2.5"
-                                        >
-                                            <Package class="w-4 h-4" /> General
-                                        </TabsTrigger>
-                                        <TabsTrigger
-                                            value="advanced"
-                                            class="flex items-center gap-2 py-2.5"
-                                        >
-                                            <Settings class="w-4 h-4" /> Advanced
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </CardHeader>
-                                <CardContent class="pt-8">
-                                    <TabsContent value="general" class="mt-0 space-y-6">
-                                        <FormField
-                                            name="productName"
-                                            v-slot="{ field, errorMessage }"
-                                        >
-                                            <FormItem>
-                                                <FormLabel>Product Name</FormLabel>
-                                                <FormControl
-                                                    ><Input
-                                                        type="text"
-                                                        placeholder="e.g. Awesome T-Shirt"
-                                                        :value="field.value"
-                                                        @update:modelValue="
-                                                            handleProductNameUpdate
-                                                        "
-                                                /></FormControl>
-                                                <FormMessage class="text-red-500">{{
-                                                    errorMessage
-                                                }}</FormMessage>
-                                            </FormItem>
-                                        </FormField>
-                                        <FormField
-                                            name="slug"
-                                            v-slot="{ componentField, errorMessage }"
-                                        >
-                                            <FormItem>
-                                                <FormLabel>Slug</FormLabel>
-                                                <FormControl
-                                                    ><Input
-                                                        type="text"
-                                                        placeholder="e.g. awesome-t-shirt"
-                                                        v-bind="componentField"
-                                                /></FormControl>
-                                                <FormMessage class="text-red-500">{{
-                                                    errorMessage
-                                                }}</FormMessage>
-                                            </FormItem>
-                                        </FormField>
-                                        <FormField
-                                            name="basePrice"
-                                            v-slot="{ componentField, errorMessage }"
-                                        >
-                                            <FormItem>
-                                                <FormLabel
-                                                    >Price
-                                                    <span class="text-red-500">*</span></FormLabel
-                                                >
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        placeholder="Enter product price"
-                                                        v-bind="componentField"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage class="text-red-500">{{
-                                                    errorMessage
-                                                }}</FormMessage>
-                                            </FormItem>
-                                        </FormField>
-                                    </TabsContent>
-                                    <TabsContent value="advanced" class="mt-0 space-y-6">
-                                    </TabsContent>
-                                </CardContent>
-                            </Tabs>
-                        </Card>
-
-                        <!-- Các nút Action -->
-                        <div class="mt-10 flex items-center justify-end space-x-4">
+    <main class="min-h-screen bg-slate-50">
+        <form @submit.prevent="onSubmit">
+            <!-- Header -->
+            <div
+                class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-slate-200/60"
+            >
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <button
+                            @click="handleCancel"
+                            type="button"
+                            class="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-800 transition-all duration-200 hover:bg-slate-100 px-3 py-2 rounded-lg"
+                        >
+                            <ArrowLeft class="w-4 h-4 mr-2" />
+                            Back to Products
+                        </button>
+                        <!-- Action buttons moved to header for better UX on mobile -->
+                        <div class="flex items-center space-x-4">
                             <button
                                 type="button"
                                 @click="handleCancel"
-                                class="px-4 py-2 rounded-md text-sm font-medium bg-slate-200 text-slate-800 hover:bg-slate-300"
+                                class="px-4 py-2 rounded-lg text-sm font-medium bg-slate-200/80 text-slate-700 hover:bg-slate-300/80 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
+                                @click="onSubmit"
                                 type="submit"
-                                class="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700"
+                                class="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md"
                             >
                                 Create Product
                             </button>
                         </div>
                     </div>
                 </div>
-            </form>
-        </div>
-    </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Main Form Column -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl shadow-sm">
+                            <Tabs v-model="activeTab" class="w-full">
+                                <div class="p-6">
+                                    <TabsContent value="general" class="mt-0 space-y-6">
+                                        <FormField name="name" v-slot="{ field, errorMessage }">
+                                            <FormItem>
+                                                <FormLabel>Product Name</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        :value="field.value"
+                                                        @update:modelValue="handleProductNameUpdate"
+                                                        class="w-full border border-black text-black"
+                                                        placeholder="e.g. Awesome T-Shirt"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage class="text-red-500 text-sm">{{
+                                                    errorMessage
+                                                }}</FormMessage>
+                                            </FormItem>
+                                        </FormField>
+
+                                        <FormField name="slug" v-slot="{ field, errorMessage }">
+                                            <FormItem>
+                                                <FormLabel>Slug</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        :value="field.value"
+                                                        class="w-full border border-black text-black"
+                                                        placeholder="e.g. awesome-t-shirt"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage class="text-red-500 text-sm">{{
+                                                    errorMessage
+                                                }}</FormMessage>
+                                            </FormItem>
+                                        </FormField>
+
+                                        <FormField
+                                            name="description"
+                                            v-slot="{ field, errorMessage }"
+                                        >
+                                            <FormItem>
+                                                <FormLabel>Description</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        :value="field.value"
+                                                        @update:modelValue="
+                                                            field['onUpdate:modelValue']
+                                                        "
+                                                        :class="['border border-black text-black', errorMessage ? 'border-black' : '']"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage class="text-red-500 text-sm">{{
+                                                    errorMessage
+                                                }}</FormMessage>
+                                            </FormItem>
+                                        </FormField>
+                                    </TabsContent>
+                                    <TabsContent value="advanced" class="mt-0 space-y-6">
+                                        <!-- Add advanced fields here -->
+                                        <p>Advanced settings will be here.</p>
+                                    </TabsContent>
+                                </div>
+                            </Tabs>
+                        </div>
+
+                        <!-- Pricing and Media in separate cards -->
+                        <div
+                            class="bg-white/60 backdrop-blur-sm rounded-xl shadow-sm p-6 space-y-6"
+                        >
+                            <h3 class="text-lg font-semibold text-slate-800">Pricing</h3>
+                            <FormField name="price" v-slot="{ field, errorMessage }">
+                                <FormItem>
+                                    <FormLabel>Base Price</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            :value="field.value"
+                                            @update:modelValue="field['onUpdate:modelValue']"
+                                            class="w-full border border-black text-black"
+                                            placeholder="e.g. 99.99"
+                                        />
+                                    </FormControl>
+                                    <FormMessage class="text-red-500 text-sm">{{
+                                        errorMessage
+                                    }}</FormMessage>
+                                </FormItem>
+                            </FormField>
+                        </div>
+                        <div
+                            class="bg-white/60 backdrop-blur-sm rounded-xl shadow-sm p-6 space-y-6"
+                        >
+                            <h3 class="text-lg font-semibold text-slate-800">Media</h3>
+                            <FormField name="image_url" v-slot="{ errorMessage }">
+                                <FormItem>
+                                    <FormLabel class="text-slate-700 font-medium"
+                                        >Product Image</FormLabel
+                                    >
+                                    <FormControl>
+                                        <div
+                                            class="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center bg-slate-50/50 hover:border-indigo-400 transition-colors"
+                                        >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                @change="handleImageUpload"
+                                                class="hidden"
+                                                id="image-upload"
+                                            />
+                                            <label
+                                                for="image-upload"
+                                                class="cursor-pointer flex flex-col items-center gap-2"
+                                            >
+                                                <div
+                                                    class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center"
+                                                >
+                                                    <Package class="w-5 h-5 text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <p class="text-slate-600 font-medium text-sm">
+                                                        Click to upload or drag & drop
+                                                    </p>
+                                                    <p class="text-xs text-slate-500">
+                                                        PNG, JPG, GIF up to 10MB
+                                                    </p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage class="text-red-500 text-sm">{{
+                                        errorMessage
+                                    }}</FormMessage>
+                                </FormItem>
+                            </FormField>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Column -->
+                    <div class="lg:col-span-1 space-y-8">
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                                <h3 class="font-semibold text-slate-800">Status</h3>
+                            </div>
+                            <FormField v-slot="{ componentField }" name="status">
+                                <FormItem>
+                                    <FormControl>
+                                        <ProductStatusForm
+                                            :modelValue="componentField.modelValue"
+                                            @update:modelValue="
+                                                componentField['onUpdate:modelValue']
+                                            "
+                                            :options="statusOptions"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            </FormField>
+                        </div>
+
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-2.5 h-2.5 bg-purple-500 rounded-full"></div>
+                                <h3 class="font-semibold text-slate-800">Category</h3>
+                            </div>
+                            <FormField v-slot="{ componentField }" name="category_id">
+                                <FormItem>
+                                    <FormControl>
+                                        <ProductCategoryForm
+                                            :modelValue="componentField.modelValue"
+                                            @update:modelValue="
+                                                componentField['onUpdate:modelValue']
+                                            "
+                                            :options="categoryOptions"
+                                            @create-category="handleCreateCategory"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            </FormField>
+                        </div>
+
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                                <h3 class="font-semibold text-slate-800">Template</h3>
+                            </div>
+                            <FormField v-slot="{ componentField }" name="template">
+                                <FormItem>
+                                    <Select v-bind="componentField">
+                                        <FormControl>
+                                            <SelectTrigger class="border bg-slate-50/80 rounded-lg">
+                                                <SelectValue placeholder="Select template" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem
+                                                v-for="option in templateOptions"
+                                                :key="option.value"
+                                                :value="option.value"
+                                            >
+                                                {{ option.label }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            </FormField>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </main>
 </template>
 
 <style scoped>
-/* Custom gradient background */
-.bg-gradient-to-br {
-    background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
-}
-
-/* Enhanced card shadows */
-.shadow-sm {
-    box-shadow:
-        0 1px 3px 0 rgba(0, 0, 0, 0.05),
-        0 1px 2px 0 rgba(0, 0, 0, 0.03);
-}
-
-/* Smooth transitions for interactive elements */
-.transition-all {
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Custom backdrop blur */
-.backdrop-blur-sm {
-    backdrop-filter: blur(4px);
-}
-
-/* Enhanced focus states */
-.focus\:ring-blue-400\/20:focus {
-    --tw-ring-color: rgb(96 165 250 / 0.2);
-}
-
-/* Improved spacing for form sections */
-.space-y-10 > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 2.5rem;
-}
-
-.space-y-8 > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 2rem;
-}
-
-.space-y-6 > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 1.5rem;
+/* Scoped styles can remain largely the same, but ensure they don't conflict */
+/* For example, you can simplify or remove some overrides if Tailwind handles it well */
+[data-state='active'] {
+    @apply bg-white shadow-sm text-indigo-600;
 }
 </style>

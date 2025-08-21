@@ -72,10 +72,10 @@ const handleClick = () => {
             </span>
             <ChevronDown :class="submenuArrowClasses" v-if="hasSubmenu" />
         </component>
-        <div
+        <!-- <div
             v-if="isActive"
             class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 to-green-500 rounded-r-md transform scale-y-100 transition-transform duration-300 ease-in-out"
-        ></div>
+        ></div> -->
     </li>
 </template>
 
