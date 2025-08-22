@@ -44,10 +44,10 @@ export class OrderSeeder {
         items: [
           {
             product_id: products[0].id,
-            variant_id: variants.find(v => v.product_id === products[0].id)?.id,
+            variant_id: variants.find((v) => v.product_id === products[0].id)?.id,
             product_name: products[0].name,
-            variant_name: variants.find(v => v.product_id === products[0].id)?.name || 'Default',
-            sku: variants.find(v => v.product_id === products[0].id)?.sku || 'DEFAULT-001',
+            variant_name: variants.find((v) => v.product_id === products[0].id)?.name || 'Default',
+            sku: variants.find((v) => v.product_id === products[0].id)?.sku || 'DEFAULT-001',
             quantity: 2,
             unit_price: 200000,
             total_price: 400000,
@@ -56,10 +56,10 @@ export class OrderSeeder {
           },
           {
             product_id: products[1].id,
-            variant_id: variants.find(v => v.product_id === products[1].id)?.id,
+            variant_id: variants.find((v) => v.product_id === products[1].id)?.id,
             product_name: products[1].name,
-            variant_name: variants.find(v => v.product_id === products[1].id)?.name || 'Default',
-            sku: variants.find(v => v.product_id === products[1].id)?.sku || 'DEFAULT-002',
+            variant_name: variants.find((v) => v.product_id === products[1].id)?.name || 'Default',
+            sku: variants.find((v) => v.product_id === products[1].id)?.sku || 'DEFAULT-002',
             quantity: 1,
             unit_price: 100000,
             total_price: 100000,
@@ -87,10 +87,10 @@ export class OrderSeeder {
         items: [
           {
             product_id: products[2].id,
-            variant_id: variants.find(v => v.product_id === products[2].id)?.id,
+            variant_id: variants.find((v) => v.product_id === products[2].id)?.id,
             product_name: products[2].name,
-            variant_name: variants.find(v => v.product_id === products[2].id)?.name || 'Default',
-            sku: variants.find(v => v.product_id === products[2].id)?.sku || 'DEFAULT-003',
+            variant_name: variants.find((v) => v.product_id === products[2].id)?.name || 'Default',
+            sku: variants.find((v) => v.product_id === products[2].id)?.sku || 'DEFAULT-003',
             quantity: 1,
             unit_price: 300000,
             total_price: 300000,
@@ -119,10 +119,10 @@ export class OrderSeeder {
         items: [
           {
             product_id: products[3].id,
-            variant_id: variants.find(v => v.product_id === products[3].id)?.id,
+            variant_id: variants.find((v) => v.product_id === products[3].id)?.id,
             product_name: products[3].name,
-            variant_name: variants.find(v => v.product_id === products[3].id)?.name || 'Default',
-            sku: variants.find(v => v.product_id === products[3].id)?.sku || 'DEFAULT-004',
+            variant_name: variants.find((v) => v.product_id === products[3].id)?.name || 'Default',
+            sku: variants.find((v) => v.product_id === products[3].id)?.sku || 'DEFAULT-004',
             quantity: 1,
             unit_price: 150000,
             total_price: 150000,
@@ -140,12 +140,12 @@ export class OrderSeeder {
 
       if (!existingOrder) {
         const { items, ...orderInfo } = orderData;
-        
+
         const order = orderRepository.create(orderInfo);
         const savedOrder = await orderRepository.save(order);
 
         // Create order items
-        const orderItems = items.map(item => {
+        const orderItems = items.map((item) => {
           const orderItem = new OrderItem();
           Object.assign(orderItem, {
             ...item,

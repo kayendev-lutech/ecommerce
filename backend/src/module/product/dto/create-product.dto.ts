@@ -51,7 +51,7 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   image_url?: string;
-  
+
   variants?: any[];
 
   attributes?: Record<string, any>;

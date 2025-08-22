@@ -4,7 +4,7 @@ import { JobData } from '../interface/job-data.interface';
 
 export class QueueService {
   private rabbitMQ = RabbitMQConfig.getInstance();
- /**
+  /**
    * Đẩy một job vào queue RabbitMQ.
    * @param queueName Tên queue
    * @param jobData Dữ liệu job
@@ -13,12 +13,14 @@ export class QueueService {
   async addJob(queueName: string, jobData: JobData): Promise<void> {
     try {
       const channel = await this.rabbitMQ.getChannel();
-      const message = Buffer.from(JSON.stringify({
-        ...jobData,
-        createdAt: new Date(),
-        retries: 0,
-        maxRetries: jobData.maxRetries || 3,
-      }));
+      const message = Buffer.from(
+        JSON.stringify({
+          ...jobData,
+          createdAt: new Date(),
+          retries: 0,
+          maxRetries: jobData.maxRetries || 3,
+        }),
+      );
 
       await channel.sendToQueue(queueName, message, {
         persistent: true,
@@ -39,28 +41,28 @@ export class QueueService {
    * @throws Nếu có lỗi khi thiết lập consumer
    */
   async processQueue(
-    queueName: string, 
-    processor: (data: JobData) => Promise<void>
+    queueName: string,
+    processor: (data: JobData) => Promise<void>,
   ): Promise<void> {
     try {
       const channel = await this.rabbitMQ.getChannel();
-      
+
       await channel.prefetch(1); // Process one job at a time
-      
+
       await channel.consume(queueName, async (msg) => {
         if (!msg) return;
 
         try {
           const jobData: JobData = JSON.parse(msg.content.toString());
           logger.info(`Processing job ${jobData.id} from queue ${queueName}`);
-          
+
           await processor(jobData);
-          
+
           channel.ack(msg);
           logger.info(`Job ${jobData.id} completed successfully`);
         } catch (error) {
           logger.error(`Error processing job:`, error);
-          
+
           const jobData: JobData = JSON.parse(msg.content.toString());
           jobData.retries = (jobData.retries || 0) + 1;
 

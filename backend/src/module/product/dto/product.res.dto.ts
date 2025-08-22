@@ -46,7 +46,7 @@ export class ProductResDto {
 
   @ApiProperty({ type: () => [Variant], required: false })
   variants?: Variant[];
-  
+
   @ApiProperty({ type: Object, required: false })
   attributes?: Record<string, any>;
 }

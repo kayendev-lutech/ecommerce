@@ -1,7 +1,10 @@
 import { CloudinaryService } from '@services/cloudinary.service';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { RedisService } from '@services/redis.service';
-import { getProductMetaCacheKey, invalidateProductListCache } from '@module/product/helper/product-cache.utils';
+import {
+  getProductMetaCacheKey,
+  invalidateProductListCache,
+} from '@module/product/helper/product-cache.utils';
 import { logger } from '@logger/logger';
 import { UploadImageJobPayload } from '../jobs/upload-image.job';
 import { JobData } from '../interface/job-data.interface';
@@ -34,18 +37,22 @@ export class ImageUploadProcessor {
       logger.info(`Image upload completed for product ${productId}: ${uploadResult.secure_url}`);
 
       if (oldPublicId) {
-        this.cloudinaryService.deleteImage(oldPublicId)
+        this.cloudinaryService
+          .deleteImage(oldPublicId)
           .then(() => logger.info(`Deleted old image: ${oldPublicId}`))
-          .catch(err => logger.warn(`Failed to delete old image ${oldPublicId}`, err));
+          .catch((err) => logger.warn(`Failed to delete old image ${oldPublicId}`, err));
       }
-
     } catch (err) {
       logger.error(`Image upload failed for product ${productId}`, err);
       throw err;
     }
   }
 
-  private async updateProductCache(productId: number, imageUrl: string, updatedAt: Date): Promise<void> {
+  private async updateProductCache(
+    productId: number,
+    imageUrl: string,
+    updatedAt: Date,
+  ): Promise<void> {
     try {
       const metaKey = getProductMetaCacheKey(productId);
       const cachedMeta = await this.redisService.get<any>(metaKey);

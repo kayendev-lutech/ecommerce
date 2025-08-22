@@ -23,17 +23,17 @@ export class ProductAttributeValue extends BaseEntity {
   custom_value?: string | null;
 
   // Relations
-  @ManyToOne(() => Product, product => product.attributeValues, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, (product) => product.attributeValues, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product!: Product;
 
-  @ManyToOne(() => CategoryAttribute, attr => attr.productValues, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CategoryAttribute, (attr) => attr.productValues, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'category_attribute_id' })
   categoryAttribute!: CategoryAttribute;
 
-  @ManyToOne(() => CategoryAttributeOption, option => option.productValues, { 
+  @ManyToOne(() => CategoryAttributeOption, (option) => option.productValues, {
     onDelete: 'CASCADE',
-    nullable: true 
+    nullable: true,
   })
   @JoinColumn({ name: 'category_attribute_option_id' })
   categoryAttributeOption?: CategoryAttributeOption | null;

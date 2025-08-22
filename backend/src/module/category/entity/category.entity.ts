@@ -27,7 +27,7 @@ export class Category extends BaseEntity {
 
   @Column({ type: 'json', nullable: true })
   metadata?: Record<string, any>;
-  
-  @OneToMany(() => CategoryAttribute, attr => attr.category, { cascade: true })
+
+  @OneToMany(() => CategoryAttribute, (attr) => attr.category, { cascade: true })
   attributes!: CategoryAttribute[];
 }

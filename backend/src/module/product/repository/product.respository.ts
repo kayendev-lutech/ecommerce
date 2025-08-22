@@ -27,7 +27,7 @@ export class ProductRepository {
     // qb.leftJoinAndSelect('product.variants', 'variants')
     // .leftJoinAndSelect('product.attributeValues', 'attributeValues')
     // .leftJoinAndSelect('attributeValues.attribute', 'attribute');
-    
+
     if (search?.trim()) {
       qb.andWhere('product.name LIKE :search', { search: `%${search.trim()}%` });
     }

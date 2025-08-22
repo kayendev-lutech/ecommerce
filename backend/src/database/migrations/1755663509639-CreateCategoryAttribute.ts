@@ -1,16 +1,16 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateCategoryAttribute1755663509639 implements MigrationInterface {
-    name = 'CreateCategoryAttribute1755663509639'
+  name = 'CreateCategoryAttribute1755663509639';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create enum for attribute types
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create enum for attribute types
+    await queryRunner.query(`
             CREATE TYPE "public"."category_attributes_type_enum" AS ENUM('text', 'number', 'boolean', 'enum')
         `);
 
-        // Create category_attributes table
-        await queryRunner.query(`
+    // Create category_attributes table
+    await queryRunner.query(`
             CREATE TABLE "category_attributes" (
                 "id" SERIAL NOT NULL,
                 "category_id" integer NOT NULL,
@@ -27,25 +27,33 @@ export class CreateCategoryAttribute1755663509639 implements MigrationInterface 
             )
         `);
 
-        // Add foreign key constraint
-        await queryRunner.query(`
+    // Add foreign key constraint
+    await queryRunner.query(`
             ALTER TABLE "category_attributes" 
             ADD CONSTRAINT "FK_category_attributes_category_id" 
             FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_category_attributes_category_id" ON "category_attributes" ("category_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_category_attributes_sort_order" ON "category_attributes" ("sort_order")`);
-        await queryRunner.query(`CREATE INDEX "IDX_category_attributes_variant_level" ON "category_attributes" ("is_variant_level")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_category_attributes_category_id" ON "category_attributes" ("category_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_category_attributes_sort_order" ON "category_attributes" ("sort_order")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_category_attributes_variant_level" ON "category_attributes" ("is_variant_level")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX "public"."IDX_category_attributes_variant_level"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_category_attributes_sort_order"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_category_attributes_category_id"`);
-        await queryRunner.query(`ALTER TABLE "category_attributes" DROP CONSTRAINT "FK_category_attributes_category_id"`);
-        await queryRunner.query(`DROP TABLE "category_attributes"`);
-        await queryRunner.query(`DROP TYPE "public"."category_attributes_type_enum"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX "public"."IDX_category_attributes_variant_level"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_category_attributes_sort_order"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_category_attributes_category_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "category_attributes" DROP CONSTRAINT "FK_category_attributes_category_id"`,
+    );
+    await queryRunner.query(`DROP TABLE "category_attributes"`);
+    await queryRunner.query(`DROP TYPE "public"."category_attributes_type_enum"`);
+  }
 }

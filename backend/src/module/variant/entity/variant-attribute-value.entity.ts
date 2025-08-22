@@ -22,17 +22,17 @@ export class VariantAttributeValue extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   custom_value?: string | null;
   // Relations
-  @ManyToOne(() => Variant, variant => variant.attributes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Variant, (variant) => variant.attributes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'variant_id' })
   variant!: Variant;
 
-  @ManyToOne(() => CategoryAttribute, attr => attr.variantValues, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CategoryAttribute, (attr) => attr.variantValues, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'category_attribute_id' })
   categoryAttribute!: CategoryAttribute;
 
-  @ManyToOne(() => CategoryAttributeOption, option => option.variantValues, { 
+  @ManyToOne(() => CategoryAttributeOption, (option) => option.variantValues, {
     onDelete: 'CASCADE',
-    nullable: true 
+    nullable: true,
   })
   @JoinColumn({ name: 'category_attribute_option_id' })
   categoryAttributeOption?: CategoryAttributeOption | null;

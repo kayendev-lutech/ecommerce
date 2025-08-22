@@ -31,12 +31,12 @@ export const seedVariantAttributeValues = async () => {
   // Ví dụ: mỗi variant sẽ có 2 thuộc tính variant-level (color, size/storage)
   for (const variant of variants) {
     // Lấy product để xác định category
-    const product = products.find(p => p.id === variant.product_id);
+    const product = products.find((p) => p.id === variant.product_id);
     if (!product) continue;
 
     // Lấy các attribute variant-level của category này
     const variantLevelAttrs = attributes.filter(
-      a => a.category_id === product.category_id && a.is_variant_level
+      (a) => a.category_id === product.category_id && a.is_variant_level,
     );
 
     for (const attr of variantLevelAttrs) {
@@ -57,7 +57,7 @@ export const seedVariantAttributeValues = async () => {
 
       if (attr.type === 'enum') {
         const option = options.find(
-          o => o.category_attribute_id === attr.id && o.option_value === value
+          (o) => o.category_attribute_id === attr.id && o.option_value === value,
         );
         if (!option) {
           logger.warn(`Option ${value} for attribute ${attr.name} not found, skipping`);
@@ -72,7 +72,7 @@ export const seedVariantAttributeValues = async () => {
         where: {
           variant_id: variant.id,
           category_attribute_id: attr.id,
-        }
+        },
       });
 
       if (!existing) {
@@ -83,9 +83,13 @@ export const seedVariantAttributeValues = async () => {
           custom_value,
         });
         await valueRepo.save(attrValue);
-        logger.info(`✅ Seeded variant attribute value: Variant ${variant.id} - ${attr.name}: ${value}`);
+        logger.info(
+          `✅ Seeded variant attribute value: Variant ${variant.id} - ${attr.name}: ${value}`,
+        );
       } else {
-        logger.info(`⏭️ Variant attribute value for Variant ${variant.id} - ${attr.name} already exists, skipping`);
+        logger.info(
+          `⏭️ Variant attribute value for Variant ${variant.id} - ${attr.name} already exists, skipping`,
+        );
       }
     }
   }

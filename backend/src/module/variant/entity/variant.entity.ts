@@ -56,13 +56,13 @@ export class Variant extends BaseEntity {
 
   @Column({ type: 'int', default: 0 })
   sort_order?: number;
-  
-  @ManyToOne(() => Product, product => product.variants, { 
-    onDelete: 'CASCADE' 
+
+  @ManyToOne(() => Product, (product) => product.variants, {
+    onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'product_id' })
   product?: Product;
-  
-  @OneToMany(() => VariantAttributeValue, value => value.variant, { cascade: true })
+
+  @OneToMany(() => VariantAttributeValue, (value) => value.variant, { cascade: true })
   attributeValues!: VariantAttributeValue[];
 }

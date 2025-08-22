@@ -40,21 +40,21 @@ export class Product extends BaseEntity {
   is_visible!: boolean;
 
   // Relations
-  @OneToMany(() => Variant, variant => variant.product, { cascade: true })
+  @OneToMany(() => Variant, (variant) => variant.product, { cascade: true })
   variants!: Variant[];
 
-  @OneToMany(() => ProductAttributeValue, value => value.product, { cascade: true })
+  @OneToMany(() => ProductAttributeValue, (value) => value.product, { cascade: true })
   attributeValues!: ProductAttributeValue[];
 
   // Helper method to get attributes as object
   getAttributes(): Record<string, any> {
     const result: Record<string, any> = {};
     if (this.attributeValues) {
-      this.attributeValues.forEach(value => {
+      this.attributeValues.forEach((value) => {
         const attrName = value.categoryAttribute.name;
         const dataType = value.categoryAttribute.type;
         const rawValue = value.getRawValue();
-        
+
         switch (dataType) {
           case 'number':
             result[attrName] = parseFloat(rawValue);

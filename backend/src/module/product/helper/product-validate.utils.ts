@@ -39,7 +39,7 @@ export function buildVariantData(
  */
 export async function invalidateProductCache(
   productCache: ProductCacheStrategy,
-  productId: number
+  productId: number,
 ): Promise<void> {
   await productCache.invalidate(productId);
 }
@@ -51,13 +51,7 @@ export function generateListCacheKey(reqDto: {
   order?: string;
   sortBy?: string;
 }): string {
-  const {
-    page = 1,
-    limit = 10,
-    search,
-    order = 'ASC',
-    sortBy = 'created_at',
-  } = reqDto;
+  const { page = 1, limit = 10, search, order = 'ASC', sortBy = 'created_at' } = reqDto;
 
   const keyParts = [
     `page:${page}`,
@@ -65,12 +59,18 @@ export function generateListCacheKey(reqDto: {
     search ? `search:${search.trim()}` : '',
     `order:${order}`,
     `sort:${sortBy}`,
-  ].filter(Boolean).join('|');
+  ]
+    .filter(Boolean)
+    .join('|');
 
   return getProductListCacheKey(keyParts);
 }
 
-export async function validateCreateProduct(productRepository: any, categoryRepository: any, data: any): Promise<void> {
+export async function validateCreateProduct(
+  productRepository: any,
+  categoryRepository: any,
+  data: any,
+): Promise<void> {
   // Check slug uniqueness
   if (data.slug) {
     Optional.of(await productRepository.findBySlug(data.slug)).throwIfExist(
@@ -94,13 +94,15 @@ export async function validateVariants(categoryId: number, variants: any[]): Pro
       // Validate variant attributes theo category
       const categoryAttributes = await AppDataSource.getRepository('CategoryAttribute').find({
         where: { category_id: categoryId, is_variant_level: true },
-        relations: ['options']
+        relations: ['options'],
       });
 
       for (const [attrName, value] of Object.entries(variant.attributes)) {
         const categoryAttr = categoryAttributes.find((a: any) => a.name === attrName);
         if (!categoryAttr) {
-          throw new BadRequestException(`Variant attribute '${attrName}' is not defined for this category`);
+          throw new BadRequestException(
+            `Variant attribute '${attrName}' is not defined for this category`,
+          );
         }
       }
     }
@@ -117,22 +119,27 @@ export function checkDuplicateVariantCombinations(variants: any[]): void {
       const attrs2 = variants[j].attributes || {};
 
       if (compareAttributeCombinations(attrs1, attrs2)) {
-        const attrStr = Object.entries(attrs1).map(([k, v]) => `${k}=${v}`).join(', ');
+        const attrStr = Object.entries(attrs1)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ');
         throw new BadRequestException(`Duplicate variant combination: {${attrStr}}`);
       }
     }
   }
 }
 
-export function compareAttributeCombinations(attrs1: Record<string, any>, attrs2: Record<string, any>): boolean {
+export function compareAttributeCombinations(
+  attrs1: Record<string, any>,
+  attrs2: Record<string, any>,
+): boolean {
   const keys1 = Object.keys(attrs1).sort();
   const keys2 = Object.keys(attrs2).sort();
 
   if (keys1.length !== keys2.length) return false;
   if (keys1.join(',') !== keys2.join(',')) return false;
 
-  return keys1.every(key =>
-    attrs1[key]?.toString().toLowerCase() === attrs2[key]?.toString().toLowerCase()
+  return keys1.every(
+    (key) => attrs1[key]?.toString().toLowerCase() === attrs2[key]?.toString().toLowerCase(),
   );
 }
 
@@ -140,7 +147,7 @@ export async function createValidatedVariants(
   variantRepository: any,
   saveVariantAttributes: (variantId: number, attributes: Record<string, any>) => Promise<void>,
   productId: number,
-  variants: any[]
+  variants: any[],
 ): Promise<void> {
   if (variants.length === 0) {
     // Create default variant
@@ -167,7 +174,7 @@ export async function createValidatedVariants(
       ...variantInfo,
       product_id: productId,
       currency_code: variantInfo.currency_code || 'VND',
-      is_default: variantInfo.is_default ?? (i === 0),
+      is_default: variantInfo.is_default ?? i === 0,
       sort_order: variantInfo.sort_order ?? i,
     });
 
@@ -183,7 +190,7 @@ export async function createValidatedVariants(
 export async function loadCreatedProductResult(
   productRepository: any,
   productCache: any,
-  productId: number
+  productId: number,
 ): Promise<ProductResDto> {
   const productWithRelations = await productRepository.repository.findOne({
     where: { id: productId },
@@ -207,7 +214,7 @@ export async function loadCreatedProductResult(
 
 export async function saveVariantAttributes(
   variantId: number,
-  attributes: Record<string, any>
+  attributes: Record<string, any>,
 ): Promise<void> {
   const attributeRepo = AppDataSource.getRepository('CategoryAttribute');
   const optionRepo = AppDataSource.getRepository('CategoryAttributeOption');
@@ -228,7 +235,10 @@ export async function saveVariantAttributes(
 
     if (attribute.type === 'enum') {
       const option = await optionRepo.findOne({
-        where: { category_attribute_id: attribute.id, option_value: value.toString().toLowerCase() }
+        where: {
+          category_attribute_id: attribute.id,
+          option_value: value.toString().toLowerCase(),
+        },
       });
       if (!option) {
         logger.warn(`Option ${value} for attribute ${attributeName} not found, skipping`);

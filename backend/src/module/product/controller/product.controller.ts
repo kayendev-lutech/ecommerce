@@ -15,7 +15,7 @@ export class ProductController {
 
   async getAll({ query }: WrappedRequest): Promise<OffsetPaginatedDto<ProductResDto>> {
     const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
-    
+
     const result = await this.productService.getAllWithPagination({
       page: Number(page),
       limit: Number(limit),
@@ -30,7 +30,7 @@ export class ProductController {
 
   async loadMore({ query }: WrappedRequest): Promise<CursorPaginatedDto<ProductResDto>> {
     const { limit = 10, afterCursor, beforeCursor, ...filters } = query;
-    
+
     const result = await this.productService.loadMoreProducts({
       limit: Number(limit),
       afterCursor,
@@ -61,22 +61,12 @@ export class ProductController {
     return HttpResponse.noContent('Product deleted successfully');
   }
 
-  async uploadImage({ params, file }: FileUploadRequest) {
-    if (!file || !file.path) {
-      throw new BadRequestException('No image file provided');
-    }
-
-    const imageUrl = file.path; 
-    const updatedProduct = await this.productService.updateProductImage(params.id, imageUrl);
-
-    return HttpResponse.ok(updatedProduct, 'Image uploaded successfully');
-  }
   async uploadImageAsync({ params, file }: FileUploadRequest) {
     if (!file) {
       throw new BadRequestException('No image file provided');
     }
 
-    const result = await this.productService.uploadProductImageAsync(Number(params.id), file);
+    const result = await this.productService.uploadProductImage(Number(params.id), file);
 
     return HttpResponse.accepted(
       { jobId: result.jobId, productId: result.productId },

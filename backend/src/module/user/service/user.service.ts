@@ -26,19 +26,17 @@ export class UserService {
       .get() as User;
   }
   /**
-     * Retrieves a paginated list of products with optional search, sorting, and additional filters.
-     * @param reqDto ListProductReqDto containing pagination, search, sort, and filter options
-     * @returns OffsetPaginatedDto<ProductResDto>
-     */
-    async getAllWithPagination(
-      reqDto: ListUserReqDto,
-    ): Promise<OffsetPaginatedDto<UserResDto>> {
-      const { data, total } = await this.userRepository.findWithPagination(reqDto);
-      
-      const metaDto = new OffsetPaginationDto(total, reqDto);
-      
-      return new OffsetPaginatedDto(plainToInstance(UserResDto, data), metaDto);
-    }
+   * Retrieves a paginated list of products with optional search, sorting, and additional filters.
+   * @param reqDto ListProductReqDto containing pagination, search, sort, and filter options
+   * @returns OffsetPaginatedDto<ProductResDto>
+   */
+  async getAllWithPagination(reqDto: ListUserReqDto): Promise<OffsetPaginatedDto<UserResDto>> {
+    const { data, total } = await this.userRepository.findWithPagination(reqDto);
+
+    const metaDto = new OffsetPaginationDto(total, reqDto);
+
+    return new OffsetPaginatedDto(plainToInstance(UserResDto, data), metaDto);
+  }
   // async getAll(): Promise<User[]> {
   //   return await this.userRepository.findAll();
   // }

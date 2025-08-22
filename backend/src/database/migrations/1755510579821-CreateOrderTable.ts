@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateOrdersTable1755510579821 implements MigrationInterface {
   name = 'CreateOrdersTable1755510579821';
@@ -45,7 +45,9 @@ export class CreateOrdersTable1755510579821 implements MigrationInterface {
     `);
     await queryRunner.query(`CREATE INDEX "IDX_orders_order_number" ON "orders" ("order_number")`);
     await queryRunner.query(`CREATE INDEX "IDX_orders_status" ON "orders" ("status")`);
-    await queryRunner.query(`CREATE INDEX "IDX_orders_payment_status" ON "orders" ("payment_status")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_orders_payment_status" ON "orders" ("payment_status")`,
+    );
     await queryRunner.query(`CREATE INDEX "IDX_orders_created_at" ON "orders" ("created_at")`);
     await queryRunner.query(`CREATE INDEX "IDX_orders_user_id" ON "orders" ("user_id")`);
   }

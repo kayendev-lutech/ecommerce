@@ -1,14 +1,16 @@
 import { VariantAttributeValue } from '@module/variant/entity/variant-attribute-value.entity';
 
-export function extractVariantAttributesAsObject(attributeValues: VariantAttributeValue[]): Record<string, any> {
+export function extractVariantAttributesAsObject(
+  attributeValues: VariantAttributeValue[],
+): Record<string, any> {
   const result: Record<string, any> = {};
   if (!attributeValues) return result;
-  
-  attributeValues.forEach(value => {
+
+  attributeValues.forEach((value) => {
     if (value.categoryAttribute) {
       const attrName = value.categoryAttribute.name;
       const dataType = value.categoryAttribute.type;
-      
+
       // Determine the raw value
       let rawValue: string | null = null;
       if (value.categoryAttributeOption) {
@@ -30,6 +32,6 @@ export function extractVariantAttributesAsObject(attributeValues: VariantAttribu
       }
     }
   });
-  
+
   return result;
 }

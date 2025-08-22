@@ -34,12 +34,12 @@ export class CategoryAttribute extends BaseEntity {
   @JoinColumn({ name: 'category_id' })
   category!: Category;
 
-  @OneToMany(() => CategoryAttributeOption, option => option.categoryAttribute, { cascade: true })
+  @OneToMany(() => CategoryAttributeOption, (option) => option.categoryAttribute, { cascade: true })
   options!: CategoryAttributeOption[];
 
-  @OneToMany(() => ProductAttributeValue, value => value.categoryAttribute)
+  @OneToMany(() => ProductAttributeValue, (value) => value.categoryAttribute)
   productValues!: ProductAttributeValue[];
 
-  @OneToMany(() => VariantAttributeValue, value => value.categoryAttribute)
+  @OneToMany(() => VariantAttributeValue, (value) => value.categoryAttribute)
   variantValues!: VariantAttributeValue[];
 }

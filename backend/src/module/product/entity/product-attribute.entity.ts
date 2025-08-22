@@ -1,5 +1,5 @@
-import { BaseEntity, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { ProductAttributeValue } from "./product-attribute-value.entity";
+import { BaseEntity, Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { ProductAttributeValue } from './product-attribute-value.entity';
 
 @Entity('product_attributes')
 export class ProductAttribute extends BaseEntity {
@@ -27,6 +27,6 @@ export class ProductAttribute extends BaseEntity {
   @Column({ type: 'int', default: 0 })
   sort_order: number;
 
-  @OneToMany(() => ProductAttributeValue, value => value.categoryAttribute.name)
+  @OneToMany(() => ProductAttributeValue, (value) => value.categoryAttribute.name)
   values: ProductAttributeValue[];
 }

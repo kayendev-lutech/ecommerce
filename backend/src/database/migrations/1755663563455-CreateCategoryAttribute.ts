@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateCategoryAttributeOptions1755663563455 implements MigrationInterface {
-    name = 'CreateCategoryAttributeOptions1755663563455'
+  name = 'CreateCategoryAttributeOptions1755663563455';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create category_attribute_options table
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create category_attribute_options table
+    await queryRunner.query(`
             CREATE TABLE "category_attribute_options" (
                 "id" SERIAL NOT NULL,
                 "category_attribute_id" integer NOT NULL,
@@ -20,22 +20,28 @@ export class CreateCategoryAttributeOptions1755663563455 implements MigrationInt
             )
         `);
 
-        // Add foreign key constraint
-        await queryRunner.query(`
+    // Add foreign key constraint
+    await queryRunner.query(`
             ALTER TABLE "category_attribute_options" 
             ADD CONSTRAINT "FK_attribute_options_attribute_id" 
             FOREIGN KEY ("category_attribute_id") REFERENCES "category_attributes"("id") ON DELETE CASCADE ON UPDATE CASCADE
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_attribute_options_attribute_id" ON "category_attribute_options" ("category_attribute_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_attribute_options_sort_order" ON "category_attribute_options" ("sort_order")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_attribute_options_attribute_id" ON "category_attribute_options" ("category_attribute_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_attribute_options_sort_order" ON "category_attribute_options" ("sort_order")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX "public"."IDX_attribute_options_sort_order"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_attribute_options_attribute_id"`);
-        await queryRunner.query(`ALTER TABLE "category_attribute_options" DROP CONSTRAINT "FK_attribute_options_attribute_id"`);
-        await queryRunner.query(`DROP TABLE "category_attribute_options"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX "public"."IDX_attribute_options_sort_order"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_attribute_options_attribute_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "category_attribute_options" DROP CONSTRAINT "FK_attribute_options_attribute_id"`,
+    );
+    await queryRunner.query(`DROP TABLE "category_attribute_options"`);
+  }
 }

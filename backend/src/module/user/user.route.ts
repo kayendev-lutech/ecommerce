@@ -24,7 +24,12 @@ const wrappedUserController = new WrapperClasss(
  *       200:
  *         description: Danh sách người dùng
  */
-router.get('/', authMiddleware,validateRequest(ListUserReqDto, 'query'), wrappedUserController.getAll);
+router.get(
+  '/',
+  authMiddleware,
+  validateRequest(ListUserReqDto, 'query'),
+  wrappedUserController.getAll,
+);
 
 /**
  * @swagger

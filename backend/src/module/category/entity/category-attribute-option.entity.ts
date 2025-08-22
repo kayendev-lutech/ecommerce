@@ -22,13 +22,13 @@ export class CategoryAttributeOption extends BaseEntity {
   sort_order!: number;
 
   // Relations
-  @ManyToOne(() => CategoryAttribute, attr => attr.options, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CategoryAttribute, (attr) => attr.options, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'category_attribute_id' })
   categoryAttribute!: CategoryAttribute;
 
-  @OneToMany(() => ProductAttributeValue, value => value.categoryAttributeOption)
+  @OneToMany(() => ProductAttributeValue, (value) => value.categoryAttributeOption)
   productValues!: ProductAttributeValue[];
 
-  @OneToMany(() => VariantAttributeValue, value => value.categoryAttributeOption)
+  @OneToMany(() => VariantAttributeValue, (value) => value.categoryAttributeOption)
   variantValues!: VariantAttributeValue[];
 }

@@ -22,7 +22,7 @@ import { cloudinary } from '@config/cloudinary.config';
 // } as CloudinaryParams);
 const memoryStorage = multer.memoryStorage();
 
-export const uploadProductImageAsync = multer({ 
+export const uploadProductImageAsync = multer({
   storage: memoryStorage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit

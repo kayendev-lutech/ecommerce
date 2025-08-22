@@ -1,4 +1,14 @@
-import { IsString, IsOptional, IsNumber, Min, Max, Length, IsInt, IsBoolean, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  Min,
+  Max,
+  Length,
+  IsInt,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateVariantDto {

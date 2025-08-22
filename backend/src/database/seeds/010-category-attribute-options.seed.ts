@@ -10,7 +10,7 @@ export const seedCategoryAttributeOptions = async () => {
 
   // Get all enum type attributes
   const enumAttributes = await attributeRepo.find({
-    where: { type: AttributeType.ENUM }
+    where: { type: AttributeType.ENUM },
   });
 
   const optionsData = [
@@ -24,7 +24,7 @@ export const seedCategoryAttributeOptions = async () => {
         { option_value: 'blue', display_name: 'Xanh dương', sort_order: 4 },
         { option_value: 'green', display_name: 'Xanh lá', sort_order: 5 },
         { option_value: 'gray', display_name: 'Xám', sort_order: 6 },
-      ]
+      ],
     },
     // Storage options (electronics)
     {
@@ -35,7 +35,7 @@ export const seedCategoryAttributeOptions = async () => {
         { option_value: '256gb', display_name: '256GB', sort_order: 3 },
         { option_value: '512gb', display_name: '512GB', sort_order: 4 },
         { option_value: '1tb', display_name: '1TB', sort_order: 5 },
-      ]
+      ],
     },
     // Size options (fashion)
     {
@@ -47,7 +47,7 @@ export const seedCategoryAttributeOptions = async () => {
         { option_value: 'l', display_name: 'L', sort_order: 4 },
         { option_value: 'xl', display_name: 'XL', sort_order: 5 },
         { option_value: 'xxl', display_name: 'XXL', sort_order: 6 },
-      ]
+      ],
     },
     // Gender options (fashion)
     {
@@ -56,29 +56,31 @@ export const seedCategoryAttributeOptions = async () => {
         { option_value: 'male', display_name: 'Nam', sort_order: 1 },
         { option_value: 'female', display_name: 'Nữ', sort_order: 2 },
         { option_value: 'unisex', display_name: 'Unisex', sort_order: 3 },
-      ]
+      ],
     },
   ];
 
   for (const optionData of optionsData) {
-    const attributes = enumAttributes.filter(attr => attr.name === optionData.attributeName);
-    
+    const attributes = enumAttributes.filter((attr) => attr.name === optionData.attributeName);
+
     for (const attribute of attributes) {
       for (const optionInfo of optionData.options) {
         const existing = await optionRepo.findOne({
           where: {
             category_attribute_id: attribute.id,
-            option_value: optionInfo.option_value
-          }
+            option_value: optionInfo.option_value,
+          },
         });
 
         if (!existing) {
           const option = optionRepo.create({
             category_attribute_id: attribute.id,
-            ...optionInfo
+            ...optionInfo,
           });
           await optionRepo.save(option);
-          logger.info(`✅ Seeded option: ${optionInfo.display_name} for attribute ${attribute.name}`);
+          logger.info(
+            `✅ Seeded option: ${optionInfo.display_name} for attribute ${attribute.name}`,
+          );
         } else {
           logger.info(`⏭️ Option ${optionInfo.option_value} already exists, skipping`);
         }

@@ -34,15 +34,17 @@ export class CategoryService {
    */
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     if (createCategoryDto.parent_id) {
-      Optional.of(await this.categoryRepository.findById(String(createCategoryDto.parent_id)))
-        .throwIfNullable(new NotFoundException('Parent category not found'));
+      Optional.of(
+        await this.categoryRepository.findById(String(createCategoryDto.parent_id)),
+      ).throwIfNullable(new NotFoundException('Parent category not found'));
     }
-    
+
     if (createCategoryDto.slug) {
-      Optional.of(await this.categoryRepository.findBySlug(createCategoryDto.slug))
-        .throwIfExist(new ConflictException('Category with this slug already exists'));
+      Optional.of(await this.categoryRepository.findBySlug(createCategoryDto.slug)).throwIfExist(
+        new ConflictException('Category with this slug already exists'),
+      );
     }
-    
+
     return this.categoryRepository.createCategory(createCategoryDto);
   }
 
@@ -68,12 +70,13 @@ export class CategoryService {
    */
   async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
     await this.getByIdOrFail(id);
-    
+
     if (updateCategoryDto.parent_id) {
-      Optional.of(await this.categoryRepository.findById(String(updateCategoryDto.parent_id)))
-        .throwIfNullable(new NotFoundException('Parent category not found'));
+      Optional.of(
+        await this.categoryRepository.findById(String(updateCategoryDto.parent_id)),
+      ).throwIfNullable(new NotFoundException('Parent category not found'));
     }
-    
+
     if (updateCategoryDto.slug) {
       const existingCategory = await this.categoryRepository.findBySlug(updateCategoryDto.slug);
       if (existingCategory && existingCategory.id !== id) {

@@ -16,20 +16,20 @@ export class ProductAttributeValidator {
    */
   async validateProductAttributes(
     categoryId: number,
-    attributes: Record<string, any>
+    attributes: Record<string, any>,
   ): Promise<AttributeValidationResult> {
     const result: AttributeValidationResult = {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     const categoryAttributes = await this.categoryAttributeRepo.find({
-      where: { 
+      where: {
         category_id: categoryId,
-        is_variant_level: false 
+        is_variant_level: false,
       },
-      relations: ['options']
+      relations: ['options'],
     });
 
     // Check required attributes
@@ -41,8 +41,8 @@ export class ProductAttributeValidator {
     }
 
     for (const [attrName, attrValue] of Object.entries(attributes)) {
-      const categoryAttr = categoryAttributes.find(a => a.name === attrName);
-      
+      const categoryAttr = categoryAttributes.find((a) => a.name === attrName);
+
       if (!categoryAttr) {
         result.warnings.push(`Attribute '${attrName}' is not defined for this category`);
         continue;
@@ -65,7 +65,7 @@ export class ProductAttributeValidator {
   async validateVariantAttributes(
     productId: number,
     variantId: number | null,
-    attributes: Record<string, any>
+    attributes: Record<string, any>,
   ): Promise<AttributeValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -85,7 +85,7 @@ export class ProductAttributeValidator {
       return { isValid: true, errors, warnings };
     }
 
-    const attrMap = new Map(categoryAttributes.map(a => [a.name, a]));
+    const attrMap = new Map(categoryAttributes.map((a) => [a.name, a]));
 
     for (const attr of categoryAttributes) {
       if (attr.is_required && !attributes[attr.name]) {
@@ -112,18 +112,17 @@ export class ProductAttributeValidator {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-
   /**
    * Validate single attribute value
    */
   private async validateAttributeValue(
     categoryAttribute: CategoryAttribute,
-    value: any
+    value: any,
   ): Promise<AttributeValidationResult> {
     const result: AttributeValidationResult = {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     const { type, name, options } = categoryAttribute;
@@ -135,11 +134,15 @@ export class ProductAttributeValidator {
           result.isValid = false;
           break;
         }
-        
-        const validOption = options.find(opt => opt.option_value === value.toString().toLowerCase());
+
+        const validOption = options.find(
+          (opt) => opt.option_value === value.toString().toLowerCase(),
+        );
         if (!validOption) {
-          const availableOptions = options.map(opt => opt.option_value).join(', ');
-          result.errors.push(`Invalid value '${value}' for attribute '${name}'. Available options: ${availableOptions}`);
+          const availableOptions = options.map((opt) => opt.option_value).join(', ');
+          result.errors.push(
+            `Invalid value '${value}' for attribute '${name}'. Available options: ${availableOptions}`,
+          );
           result.isValid = false;
         }
         break;
@@ -152,7 +155,10 @@ export class ProductAttributeValidator {
         break;
 
       case 'boolean':
-        if (typeof value !== 'boolean' && !['true', 'false', '1', '0'].includes(value.toString().toLowerCase())) {
+        if (
+          typeof value !== 'boolean' &&
+          !['true', 'false', '1', '0'].includes(value.toString().toLowerCase())
+        ) {
           result.errors.push(`Attribute '${name}' must be a boolean, got '${value}'`);
           result.isValid = false;
         }
@@ -178,12 +184,12 @@ export class ProductAttributeValidator {
   private async checkDuplicateVariant(
     productId: number,
     currentVariantId: number | null,
-    newAttributes: Record<string, any>
+    newAttributes: Record<string, any>,
   ): Promise<AttributeValidationResult> {
     const result: AttributeValidationResult = {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     try {
@@ -204,13 +210,13 @@ export class ProductAttributeValidator {
         .select([
           'v.id as variant_id',
           'ca.name as attribute_name',
-          'COALESCE(cao.option_value, vav.custom_value) as attribute_value'
+          'COALESCE(cao.option_value, vav.custom_value) as attribute_value',
         ])
         .getRawMany();
 
       // Group by variant_id để tạo map các variant và attributes của chúng
       const variantAttributeMap = new Map<number, Record<string, string>>();
-      
+
       for (const row of existingVariantAttributes) {
         const variantId = row.variant_id;
         const attrName = row.attribute_name;
@@ -219,27 +225,26 @@ export class ProductAttributeValidator {
         if (!variantAttributeMap.has(variantId)) {
           variantAttributeMap.set(variantId, {});
         }
-        
+
         variantAttributeMap.get(variantId)![attrName] = attrValue;
       }
 
       // Check if new attribute combination matches any existing variant
       for (const [variantId, existingAttrs] of variantAttributeMap.entries()) {
         const isMatch = this.compareAttributeCombinations(newAttributes, existingAttrs);
-        
+
         if (isMatch) {
           const attrStr = Object.entries(newAttributes)
             .map(([key, value]) => `${key}=${value}`)
             .join(', ');
-          
+
           result.errors.push(
-            `Duplicate variant combination detected. A variant with attributes {${attrStr}} already exists (Variant ID: ${variantId})`
+            `Duplicate variant combination detected. A variant with attributes {${attrStr}} already exists (Variant ID: ${variantId})`,
           );
           result.isValid = false;
           break;
         }
       }
-
     } catch (error) {
       logger.error('Error checking duplicate variant:', error);
       result.errors.push('Error validating variant uniqueness');
@@ -248,10 +253,7 @@ export class ProductAttributeValidator {
 
     return result;
   }
-  async saveProductAttributes(
-    productId: number,
-    attributes: Record<string, any>
-  ): Promise<void> {
+  async saveProductAttributes(productId: number, attributes: Record<string, any>): Promise<void> {
     const attributeRepo = AppDataSource.getRepository('CategoryAttribute');
     const optionRepo = AppDataSource.getRepository('CategoryAttributeOption');
     const valueRepo = AppDataSource.getRepository('ProductAttributeValue');
@@ -268,7 +270,10 @@ export class ProductAttributeValidator {
 
       if (attribute.type === 'enum') {
         const option = await optionRepo.findOne({
-          where: { category_attribute_id: attribute.id, option_value: value.toString().toLowerCase() }
+          where: {
+            category_attribute_id: attribute.id,
+            option_value: value.toString().toLowerCase(),
+          },
         });
         if (!option) {
           logger.warn(`Option ${value} for attribute ${attributeName} not found, skipping`);
@@ -294,7 +299,7 @@ export class ProductAttributeValidator {
    */
   private compareAttributeCombinations(
     attrs1: Record<string, any>,
-    attrs2: Record<string, any>
+    attrs2: Record<string, any>,
   ): boolean {
     const keys1 = Object.keys(attrs1).sort();
     const keys2 = Object.keys(attrs2).sort();
@@ -313,7 +318,7 @@ export class ProductAttributeValidator {
     for (const key of keys1) {
       const value1 = attrs1[key]?.toString().toLowerCase();
       const value2 = attrs2[key]?.toString().toLowerCase();
-      
+
       if (value1 !== value2) {
         return false;
       }
@@ -327,22 +332,26 @@ export class ProductAttributeValidator {
    */
   async validateMultipleVariants(
     productId: number,
-    variantsData: Array<{ variantId?: number; attributes: Record<string, any> }>
+    variantsData: Array<{ variantId?: number; attributes: Record<string, any> }>,
   ): Promise<AttributeValidationResult> {
     const result: AttributeValidationResult = {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     // Validate each variant individually
     for (let i = 0; i < variantsData.length; i++) {
       const { variantId, attributes } = variantsData[i];
-      
-      const validation = await this.validateVariantAttributes(productId, variantId || null, attributes);
-      
+
+      const validation = await this.validateVariantAttributes(
+        productId,
+        variantId || null,
+        attributes,
+      );
+
       if (!validation.isValid) {
-        validation.errors.forEach(error => {
+        validation.errors.forEach((error) => {
           result.errors.push(`Variant ${i + 1}: ${error}`);
         });
         result.isValid = false;
@@ -354,12 +363,16 @@ export class ProductAttributeValidator {
     // Check for duplicates within the batch itself
     for (let i = 0; i < variantsData.length; i++) {
       for (let j = i + 1; j < variantsData.length; j++) {
-        if (this.compareAttributeCombinations(variantsData[i].attributes, variantsData[j].attributes)) {
+        if (
+          this.compareAttributeCombinations(variantsData[i].attributes, variantsData[j].attributes)
+        ) {
           const attrStr = Object.entries(variantsData[i].attributes)
             .map(([key, value]) => `${key}=${value}`)
             .join(', ');
-          
-          result.errors.push(`Duplicate variants in request: Variant ${i + 1} and Variant ${j + 1} have same attributes {${attrStr}}`);
+
+          result.errors.push(
+            `Duplicate variants in request: Variant ${i + 1} and Variant ${j + 1} have same attributes {${attrStr}}`,
+          );
           result.isValid = false;
         }
       }

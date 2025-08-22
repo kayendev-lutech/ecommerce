@@ -3,8 +3,10 @@ import { Router } from 'express';
 import { ProductController } from '@module/product/controller/product.controller';
 // Validate dto
 import { validateRequest } from '@middlewares/dto-validator';
-import { PaginationQueryDto } from '@module/product/dto/pagination.dto';
-import { uploadProductImage, uploadProductImageAsync } from '@middlewares/cloudinary-upload.middleware';
+import {
+  uploadProductImage,
+  uploadProductImageAsync,
+} from '@middlewares/cloudinary-upload.middleware';
 import { UpdateProductDto } from '@module/product/dto/update-product.dto';
 import { CreateProductDto } from '@module/product/dto/create-product.dto';
 import { ListProductReqDto } from './dto/list-product-req.dto';
@@ -38,8 +40,11 @@ const wrappedProductController = new WrapperClasss(
  */
 router.get('/', validateRequest(ListProductReqDto, 'query'), wrappedProductController.getAll);
 
-
-router.get('/load-more', validateRequest(LoadMoreProductsReqDto, 'query'), wrappedProductController.loadMore);
+router.get(
+  '/load-more',
+  validateRequest(LoadMoreProductsReqDto, 'query'),
+  wrappedProductController.loadMore,
+);
 /**
  * @swagger
  * /product/{id}:

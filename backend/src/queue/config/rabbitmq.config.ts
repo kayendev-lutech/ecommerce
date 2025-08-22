@@ -30,7 +30,7 @@ export class RabbitMQConfig {
 
       // Declare exchanges
       await this.setupExchanges();
-      
+
       // Declare queues and bindings
       await this.setupQueues();
 
@@ -77,45 +77,45 @@ export class RabbitMQConfig {
 
     // Order processing queue bindings
     await this.channel.bindQueue(
-      QUEUES.ORDER_PROCESSING, 
-      EXCHANGES.ORDER_EXCHANGE, 
-      ROUTING_KEYS.ORDER_CREATED
+      QUEUES.ORDER_PROCESSING,
+      EXCHANGES.ORDER_EXCHANGE,
+      ROUTING_KEYS.ORDER_CREATED,
     );
     await this.channel.bindQueue(
-      QUEUES.ORDER_PROCESSING, 
-      EXCHANGES.ORDER_EXCHANGE, 
-      ROUTING_KEYS.ORDER_UPDATED
+      QUEUES.ORDER_PROCESSING,
+      EXCHANGES.ORDER_EXCHANGE,
+      ROUTING_KEYS.ORDER_UPDATED,
     );
 
     // Notification queue bindings
     await this.channel.bindQueue(
-      QUEUES.EMAIL_NOTIFICATION, 
-      EXCHANGES.NOTIFICATION_EXCHANGE, 
-      ROUTING_KEYS.NOTIFICATION_EMAIL
+      QUEUES.EMAIL_NOTIFICATION,
+      EXCHANGES.NOTIFICATION_EXCHANGE,
+      ROUTING_KEYS.NOTIFICATION_EMAIL,
     );
     await this.channel.bindQueue(
-      QUEUES.SMS_NOTIFICATION, 
-      EXCHANGES.NOTIFICATION_EXCHANGE, 
-      ROUTING_KEYS.NOTIFICATION_SMS
+      QUEUES.SMS_NOTIFICATION,
+      EXCHANGES.NOTIFICATION_EXCHANGE,
+      ROUTING_KEYS.NOTIFICATION_SMS,
     );
 
     // Inventory queue bindings
     await this.channel.bindQueue(
-      QUEUES.INVENTORY_UPDATE, 
-      EXCHANGES.INVENTORY_EXCHANGE, 
-      ROUTING_KEYS.INVENTORY_RESERVED
+      QUEUES.INVENTORY_UPDATE,
+      EXCHANGES.INVENTORY_EXCHANGE,
+      ROUTING_KEYS.INVENTORY_RESERVED,
     );
     await this.channel.bindQueue(
-      QUEUES.INVENTORY_UPDATE, 
-      EXCHANGES.INVENTORY_EXCHANGE, 
-      ROUTING_KEYS.INVENTORY_RELEASED
+      QUEUES.INVENTORY_UPDATE,
+      EXCHANGES.INVENTORY_EXCHANGE,
+      ROUTING_KEYS.INVENTORY_RELEASED,
     );
 
     // Order notification bindings
     await this.channel.bindQueue(
-      QUEUES.ORDER_NOTIFICATION, 
-      EXCHANGES.ORDER_EXCHANGE, 
-      'order.*'  // Catch all order events
+      QUEUES.ORDER_NOTIFICATION,
+      EXCHANGES.ORDER_EXCHANGE,
+      'order.*', // Catch all order events
     );
   }
 

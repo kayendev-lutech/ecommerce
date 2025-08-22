@@ -44,7 +44,6 @@ app.use(generateDeviceIdMiddleware());
 app.use(apiWatcher);
 app.use(globalLimiter);
 
-
 app.use('/api/v1/auth', authLimiter, authRoute);
 app.use('/api/v1/user', userRoute);
 app.use('/api/v1/order', orderRoute);

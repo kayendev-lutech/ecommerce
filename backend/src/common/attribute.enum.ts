@@ -3,5 +3,5 @@ export enum AttributeType {
   NUMBER = 'number',
   BOOLEAN = 'boolean',
   DATE = 'date',
-  ENUM = 'enum'
+  ENUM = 'enum',
 }

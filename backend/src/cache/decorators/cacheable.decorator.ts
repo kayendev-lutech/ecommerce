@@ -16,12 +16,7 @@ export function Cacheable(key: string | ((...args: any[]) => string), ttl: numbe
 
       const cacheKey = typeof key === 'function' ? key(...args) : key;
 
-      return getOrSetCache(
-        redisService,
-        cacheKey,
-        ttl,
-        async () => method.apply(this, args)
-      );
+      return getOrSetCache(redisService, cacheKey, ttl, async () => method.apply(this, args));
     };
   };
 }
@@ -43,9 +38,7 @@ export function CacheInvalidate(keys: string | string[] | ((...args: any[]) => s
         const invalidateKeys = typeof keys === 'function' ? keys(...args) : keys;
         const keyArray = Array.isArray(invalidateKeys) ? invalidateKeys : [invalidateKeys];
 
-        await Promise.allSettled(
-          keyArray.map(key => redisService.del(key))
-        );
+        await Promise.allSettled(keyArray.map((key) => redisService.del(key)));
 
         logger.debug(`Cache invalidated for keys: ${keyArray.join(', ')}`);
       } catch (error) {

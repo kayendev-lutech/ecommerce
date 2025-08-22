@@ -70,7 +70,9 @@ export class WrapperClasss<T extends Record<string, any>> {
       },
     }) as unknown as WrapperClasss<T> & T;
   }
-  static wrap<T extends Record<string, any>>(controllerClass: new (...args: any[]) => T): WrapperClasss<T> & T {
+  static wrap<T extends Record<string, any>>(
+    controllerClass: new (...args: any[]) => T,
+  ): WrapperClasss<T> & T {
     const instance = Container.get(controllerClass);
     return new WrapperClasss(instance) as WrapperClasss<T> & T;
   }
@@ -82,7 +84,7 @@ export class WrapperClass {
     return new Proxy(instance, {
       get(target: T, prop) {
         const original = target[prop as keyof T];
-        if (typeof original === "function") {
+        if (typeof original === 'function') {
           return async (req: Request, res: Response) => {
             try {
               const result = await (original as any).call(target, {
@@ -99,9 +101,7 @@ export class WrapperClass {
           };
         }
         return original;
-      }
+      },
     });
   }
 }
-
-

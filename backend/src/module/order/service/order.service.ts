@@ -2,13 +2,11 @@ import { OrderRepository } from '@module/order/repository/order.repository';
 import { Order } from '@module/order/entity/order.entity';
 import { OrderItem } from '@module/order/entity/order-item.entity';
 import { CreateOrderDto } from '@module/order/dto/create-order.dto';
-import { UpdateOrderDto } from '@module/order/dto/update-order.dto';
-import { NotFoundException, BadRequestException, ConflictException } from '@errors/app-error';
+import { NotFoundException, BadRequestException } from '@errors/app-error';
 import { AppDataSource } from '@config/typeorm.config';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { VariantRepository } from '@module/variant/repository/variant.repository';
-import { QueueService } from 'src/queue/services/queue.service';
-import { EXCHANGES, ROUTING_KEYS } from 'src/queue/config/exchange.config';
+import { EXCHANGES, ROUTING_KEYS } from '@queue/config/exchange.config';
 import { logger } from '@logger/logger';
 import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
@@ -21,7 +19,6 @@ export class OrderService {
   private orderRepository = new OrderRepository();
   private productRepository = new ProductRepository();
   private variantRepository = new VariantRepository();
-  private queueService = new QueueService();
   private exchangeService = new ExchangeService();
 
   /**
@@ -95,7 +92,7 @@ export class OrderService {
           variant_id: itemData.variant_id ?? null,
           product_name: product.name ?? 'Unknown Product', // luôn có giá trị
           variant_name: variant ? variant.name : '', // nullable thì dùng '', null hoặc 'Default'
-          sku: (variant?.sku ?? product.slug ?? 'UNKNOWN-SKU'), // luôn có giá trị
+          sku: variant?.sku ?? product.slug ?? 'UNKNOWN-SKU', // luôn có giá trị
           quantity: itemData.quantity,
           unit_price: unitPrice ?? 0, // luôn có giá trị
           total_price: (unitPrice ?? 0) * itemData.quantity, // luôn có giá trị
@@ -105,8 +102,7 @@ export class OrderService {
       }
 
       // Save all order items at once
-      await AppDataSource
-        .createQueryBuilder()
+      await AppDataSource.createQueryBuilder()
         .insert()
         .into(OrderItem)
         .values(orderItemsData)
@@ -127,7 +123,6 @@ export class OrderService {
 
       logger.info(`Order ${completeOrder.order_number} created successfully`);
       return completeOrder;
-
     } catch (error) {
       logger.error('Error creating order:', error);
       throw error;
@@ -139,12 +134,12 @@ export class OrderService {
    */
   async updateStatus(id: number, status: OrderStatus, notes?: string): Promise<Order> {
     const order = await this.getOrderOrFail(id);
-    
+
     // Validate status transition
     this.validateStatusTransition(order.status, status);
 
-    const updateData: Partial<Order> = { 
-      status, 
+    const updateData: Partial<Order> = {
+      status,
       notes: notes || order.notes,
     };
 
@@ -163,7 +158,7 @@ export class OrderService {
     }
 
     const updatedOrder = await this.orderRepository.update(id, updateData);
-    
+
     if (!updatedOrder) {
       throw new NotFoundException('Order not found after update');
     }
@@ -187,7 +182,11 @@ export class OrderService {
   /**
    * Update payment status with event publishing
    */
-  async updatePaymentStatus(id: number, paymentStatus: PaymentStatus, paymentMethod?: string): Promise<Order> {
+  async updatePaymentStatus(
+    id: number,
+    paymentStatus: PaymentStatus,
+    paymentMethod?: string,
+  ): Promise<Order> {
     const order = await this.getOrderOrFail(id);
 
     const updatedOrder = await this.orderRepository.update(id, {
@@ -231,11 +230,11 @@ export class OrderService {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    
+
     // Get count of orders this month
     const count = await this.orderRepository.getMonthlyOrderCount(year, parseInt(month));
     const orderNumber = `ORD-${year}${month}-${String(count + 1).padStart(6, '0')}`;
-    
+
     return orderNumber;
   }
 
@@ -259,15 +258,18 @@ export class OrderService {
     }
   }
 
-  private async calculateOrderTotals(items: any[], orderData: any): Promise<{ subtotal: number; totalAmount: number }> {
+  private async calculateOrderTotals(
+    items: any[],
+    orderData: any,
+  ): Promise<{ subtotal: number; totalAmount: number }> {
     let subtotal = 0;
 
     for (const item of items) {
       const product = await this.productRepository.findById(item.product_id);
-      const variant = item.variant_id 
-        ? await this.variantRepository.findById(item.variant_id) 
+      const variant = item.variant_id
+        ? await this.variantRepository.findById(item.variant_id)
         : null;
-      
+
       const unitPrice = variant?.price || product!.price;
       subtotal += unitPrice * item.quantity;
     }
@@ -293,25 +295,19 @@ export class OrderService {
     };
 
     if (!validTransitions[currentStatus].includes(newStatus)) {
-      throw new BadRequestException(
-        `Cannot transition from ${currentStatus} to ${newStatus}`
-      );
+      throw new BadRequestException(`Cannot transition from ${currentStatus} to ${newStatus}`);
     }
   }
 
   private async publishOrderEvent(routingKey: string, order: Order): Promise<void> {
     try {
-      await this.exchangeService.publishToExchange(
-        EXCHANGES.ORDER_EXCHANGE,
-        routingKey,
-        {
-          event: routingKey,
-          order_id: order.id,
-          order_number: order.order_number,
-          order,
-          timestamp: new Date().toISOString(),
-        }
-      );
+      await this.exchangeService.publishToExchange(EXCHANGES.ORDER_EXCHANGE, routingKey, {
+        event: routingKey,
+        order_id: order.id,
+        order_number: order.order_number,
+        order,
+        timestamp: new Date().toISOString(),
+      });
 
       logger.info(`Published order event: ${routingKey} for order ${order.order_number}`);
     } catch (error) {
@@ -329,13 +325,13 @@ export class OrderService {
           event: ROUTING_KEYS.INVENTORY_RESERVED,
           order_id: order.id,
           order_number: order.order_number,
-          items: order.items.map(item => ({
+          items: order.items.map((item) => ({
             product_id: item.product_id,
             variant_id: item.variant_id,
             quantity: item.quantity,
           })),
           timestamp: new Date().toISOString(),
-        }
+        },
       );
 
       logger.info(`Inventory reservation requested for order ${order.order_number}`);
@@ -353,13 +349,13 @@ export class OrderService {
           event: ROUTING_KEYS.INVENTORY_RELEASED,
           order_id: order.id,
           order_number: order.order_number,
-          items: order.items.map(item => ({
+          items: order.items.map((item) => ({
             product_id: item.product_id,
             variant_id: item.variant_id,
             quantity: item.quantity,
           })),
           timestamp: new Date().toISOString(),
-        }
+        },
       );
 
       logger.info(`Inventory release requested for order ${order.order_number}`);

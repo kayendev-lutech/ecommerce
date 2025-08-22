@@ -1,5 +1,5 @@
 import { logger } from '@logger/logger';
-import { RabbitMQConfig } from 'src/queue/config/rabbitmq.config';
+import { RabbitMQConfig } from '@queue/config/rabbitmq.config';
 import * as amqp from 'amqplib';
 
 export class ExchangeService {
@@ -16,15 +16,17 @@ export class ExchangeService {
       persistent?: boolean;
       expiration?: string;
       headers?: Record<string, any>;
-    }
+    },
   ): Promise<void> {
     try {
       const channel = await this.rabbitMQ.getChannel();
 
-      const message = Buffer.from(JSON.stringify({
-        ...data,
-        publishedAt: new Date().toISOString(),
-      }));
+      const message = Buffer.from(
+        JSON.stringify({
+          ...data,
+          publishedAt: new Date().toISOString(),
+        }),
+      );
 
       const publishOptions = {
         persistent: options?.persistent ?? true,
@@ -34,12 +36,7 @@ export class ExchangeService {
         timestamp: Date.now(),
       };
 
-      const published = channel.publish(
-        exchange,
-        routingKey,
-        message,
-        publishOptions
-      );
+      const published = channel.publish(exchange, routingKey, message, publishOptions);
 
       if (!published) {
         throw new Error('Failed to publish message to exchange');
@@ -63,7 +60,7 @@ export class ExchangeService {
       persistent?: boolean;
       expiration?: string;
       headers?: Record<string, any>;
-    }
+    },
   ): Promise<boolean> {
     try {
       // Lấy connection từ RabbitMQConfig
@@ -73,10 +70,12 @@ export class ExchangeService {
       // Tạo ConfirmChannel
       const confirmChannel: amqp.ConfirmChannel = await connection.createConfirmChannel();
 
-      const message = Buffer.from(JSON.stringify({
-        ...data,
-        publishedAt: new Date().toISOString(),
-      }));
+      const message = Buffer.from(
+        JSON.stringify({
+          ...data,
+          publishedAt: new Date().toISOString(),
+        }),
+      );
 
       const publishOptions = {
         persistent: options?.persistent ?? true,
@@ -87,21 +86,17 @@ export class ExchangeService {
       };
 
       return new Promise((resolve, reject) => {
-        confirmChannel.publish(
-          exchange,
-          routingKey,
-          message,
-          publishOptions,
-          (err) => {
-            if (err) {
-              logger.error(`Publish confirmation failed for ${exchange}:`, err);
-              reject(err);
-            } else {
-              logger.info(`Message confirmed for exchange ${exchange} with routing key ${routingKey}`);
-              resolve(true);
-            }
+        confirmChannel.publish(exchange, routingKey, message, publishOptions, (err) => {
+          if (err) {
+            logger.error(`Publish confirmation failed for ${exchange}:`, err);
+            reject(err);
+          } else {
+            logger.info(
+              `Message confirmed for exchange ${exchange} with routing key ${routingKey}`,
+            );
+            resolve(true);
           }
-        );
+        });
       });
     } catch (error) {
       logger.error(`Error publishing with confirmation to exchange ${exchange}:`, error);
@@ -122,7 +117,7 @@ export class ExchangeService {
         expiration?: string;
         headers?: Record<string, any>;
       };
-    }>
+    }>,
   ): Promise<void> {
     try {
       // Lấy connection từ RabbitMQConfig
@@ -133,10 +128,12 @@ export class ExchangeService {
       const confirmChannel: amqp.ConfirmChannel = await connection.createConfirmChannel();
 
       const publishPromises = messages.map(({ routingKey, data, options }) => {
-        const message = Buffer.from(JSON.stringify({
-          ...data,
-          publishedAt: new Date().toISOString(),
-        }));
+        const message = Buffer.from(
+          JSON.stringify({
+            ...data,
+            publishedAt: new Date().toISOString(),
+          }),
+        );
 
         const publishOptions = {
           persistent: options?.persistent ?? true,
@@ -147,25 +144,18 @@ export class ExchangeService {
         };
 
         return new Promise<void>((resolve, reject) => {
-          confirmChannel.publish(
-            exchange,
-            routingKey,
-            message,
-            publishOptions,
-            (err) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve();
-              }
+          confirmChannel.publish(exchange, routingKey, message, publishOptions, (err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
             }
-          );
+          });
         });
       });
 
       await Promise.all(publishPromises);
       logger.info(`Batch published ${messages.length} messages to exchange ${exchange}`);
-
     } catch (error) {
       logger.error(`Error batch publishing to exchange ${exchange}:`, error);
       throw error;

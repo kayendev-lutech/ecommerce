@@ -50,11 +50,11 @@ export class RedisService {
     try {
       const hashData = await this.redisClient.hGetAll(key);
       const result: Record<string, T> = {};
-      
+
       for (const [field, value] of Object.entries(hashData)) {
         result[field] = JSON.parse(value as string);
       }
-      
+
       return result;
     } catch (error) {
       logger.error(`Redis HGETALL error for key ${key}:`, error);
@@ -121,7 +121,7 @@ export class RedisService {
       logger.error(`Redis DELETE BY PATTERN error for pattern ${pattern}:`, error);
     }
   }
-    /**
+  /**
    * Set a value only if the key does not already exist (SETNX).
    * Optionally set an expiration in seconds.
    * Returns true if the key was set, false otherwise.

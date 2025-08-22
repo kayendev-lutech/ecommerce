@@ -3,10 +3,12 @@ import { ProductAttributeValue } from '@module/product/entity/product-attribute-
 import { productAttributeValidator } from './product-attribute-validator';
 import { BadRequestException } from '@errors/app-error';
 
-export function extractAttributesAsObject(attributeValues: ProductAttributeValue[]): Record<string, any> {
+export function extractAttributesAsObject(
+  attributeValues: ProductAttributeValue[],
+): Record<string, any> {
   const result: Record<string, any> = {};
   if (!attributeValues) return result;
-  attributeValues.forEach(value => {
+  attributeValues.forEach((value) => {
     // Use categoryAttribute instead of attribute, and get value from option or custom_value
     if (value.categoryAttribute) {
       const attrName = value.categoryAttribute.name;
@@ -42,13 +44,15 @@ export function hasAttributes(attributes: any): boolean {
 }
 export async function updateProductAttributesTransactional(
   productId: number,
-  attributes: Record<string, any>
+  attributes: Record<string, any>,
 ): Promise<void> {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
   await queryRunner.startTransaction();
   try {
-    await queryRunner.manager.getRepository('ProductAttributeValue').delete({ product_id: productId });
+    await queryRunner.manager
+      .getRepository('ProductAttributeValue')
+      .delete({ product_id: productId });
     await productAttributeValidator.saveProductAttributes(productId, attributes);
     await queryRunner.commitTransaction();
   } catch (err) {

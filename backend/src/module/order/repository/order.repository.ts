@@ -46,7 +46,8 @@ export class OrderRepository {
   }
 
   async getMonthlyOrderCount(year: number, month: number): Promise<number> {
-    const qb = this.repo.createQueryBuilder('order')
+    const qb = this.repo
+      .createQueryBuilder('order')
       .where('EXTRACT(YEAR FROM order.created_at) = :year', { year })
       .andWhere('EXTRACT(MONTH FROM order.created_at) = :month', { month });
     return qb.getCount();

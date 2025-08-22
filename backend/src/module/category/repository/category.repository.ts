@@ -28,20 +28,20 @@ export class CategoryRepository implements ICategoryRepository {
   async findAllWithRelations(): Promise<Category[]> {
     return this.repo.find({
       relations: ['attributes', 'attributes.options'],
-      order: { sort_order: 'ASC' }
+      order: { sort_order: 'ASC' },
     });
   }
   async findByParentIdWithRelations(parentId: number): Promise<Category[]> {
     return this.repo.find({
       where: { parent_id: parentId },
       relations: ['attributes', 'attributes.options'],
-      order: { sort_order: 'ASC' }
+      order: { sort_order: 'ASC' },
     });
   }
   async findByIdWithRelations(id: string): Promise<Category | null> {
     return this.repo.findOne({
       where: { id },
-      relations: ['attributes', 'attributes.options']
+      relations: ['attributes', 'attributes.options'],
     });
   }
   async updateCategory(id: string, data: Partial<Category>): Promise<Category | null> {

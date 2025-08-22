@@ -10,18 +10,21 @@ import { extractVariantAttributesAsObject } from './variant-attribute-value.util
 export async function validateCreateVariant(
   variantRepository: any,
   productRepository: any,
-  data: any
+  data: any,
 ): Promise<void> {
   // Validate product exists
   const product = await productRepository.findById(data.product_id);
   if (!product) {
     throw new NotFoundException('Product not found');
-  } 
+  }
 
   // Validate variant name uniqueness within product
   if (data.name) {
-    const existingVariant = await variantRepository.findByNameAndProductId(data.name, data.product_id);
-    if (existingVariant) { 
+    const existingVariant = await variantRepository.findByNameAndProductId(
+      data.name,
+      data.product_id,
+    );
+    if (existingVariant) {
       throw new ConflictException('Variant name must be unique within a product');
     }
   }
@@ -39,11 +42,14 @@ export async function validateUpdateVariant(
   variantRepository: any,
   variantId: number,
   data: any,
-  currentVariant: Variant
+  currentVariant: Variant,
 ): Promise<void> {
   // Validate variant name uniqueness (exclude current variant)
   if (data.name && data.name !== currentVariant.name) {
-    const existingVariant = await variantRepository.findByNameAndProductId(data.name, currentVariant.product_id);
+    const existingVariant = await variantRepository.findByNameAndProductId(
+      data.name,
+      currentVariant.product_id,
+    );
     if (existingVariant && existingVariant.id !== variantId) {
       throw new ConflictException('Variant name must be unique within a product');
     }
@@ -61,7 +67,7 @@ export async function validateUpdateVariant(
 export async function validateVariantAttributes(
   productId: number,
   variantId: number | null,
-  attributes: Record<string, any>
+  attributes: Record<string, any>,
 ): Promise<void> {
   if (!attributes || Object.keys(attributes).length === 0) {
     return;
@@ -70,12 +76,14 @@ export async function validateVariantAttributes(
   const validation = await productAttributeValidator.validateVariantAttributes(
     productId,
     variantId,
-    attributes
+    attributes,
   );
 
   if (!validation.isValid) {
     logger.error('Variant attribute validation failed', { errors: validation.errors });
-    throw new BadRequestException(`Variant attribute validation failed: ${validation.errors.join(', ')}`);
+    throw new BadRequestException(
+      `Variant attribute validation failed: ${validation.errors.join(', ')}`,
+    );
   }
 
   if (validation.warnings.length > 0) {
@@ -85,7 +93,7 @@ export async function validateVariantAttributes(
 
 export async function saveVariantAttributes(
   variantId: number,
-  attributes: Record<string, any>
+  attributes: Record<string, any>,
 ): Promise<void> {
   const attributeRepo = AppDataSource.getRepository('CategoryAttribute');
   const optionRepo = AppDataSource.getRepository('CategoryAttributeOption');
@@ -106,7 +114,10 @@ export async function saveVariantAttributes(
 
     if (attribute.type === 'enum') {
       const option = await optionRepo.findOne({
-        where: { category_attribute_id: attribute.id, option_value: value.toString().toLowerCase() }
+        where: {
+          category_attribute_id: attribute.id,
+          option_value: value.toString().toLowerCase(),
+        },
       });
       if (!option) {
         logger.warn(`Option ${value} for attribute ${attributeName} not found, skipping`);
@@ -130,11 +141,15 @@ export async function saveVariantAttributes(
 
 export async function loadVariantWithAttributes(
   variantRepository: any,
-  variantId: number
+  variantId: number,
 ): Promise<VariantResDto> {
   const variantWithRelations = await variantRepository.repository.findOne({
     where: { id: variantId },
-    relations: ['attributeValues', 'attributeValues.categoryAttribute', 'attributeValues.categoryAttributeOption'],
+    relations: [
+      'attributeValues',
+      'attributeValues.categoryAttribute',
+      'attributeValues.categoryAttributeOption',
+    ],
   });
 
   if (!variantWithRelations) {
@@ -142,7 +157,9 @@ export async function loadVariantWithAttributes(
   }
 
   const variantDto = plainToInstance(VariantResDto, variantWithRelations);
-  variantDto.attributes = extractVariantAttributesAsObject(variantWithRelations.attributeValues || []);
+  variantDto.attributes = extractVariantAttributesAsObject(
+    variantWithRelations.attributeValues || [],
+  );
 
   return variantDto;
 }

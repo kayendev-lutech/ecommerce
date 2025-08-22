@@ -70,11 +70,7 @@ router.get('/:id', wrappedCategoryController.getById);
  *       201:
  *         description: Danh mục đã được tạo
  */
-router.post(
-  '/',
-  validateRequest(CreateCategoryDto),
-  wrappedCategoryController.create
-);
+router.post('/', validateRequest(CreateCategoryDto), wrappedCategoryController.create);
 
 /**
  * @swagger

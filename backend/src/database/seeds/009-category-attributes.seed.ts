@@ -105,10 +105,10 @@ export const seedCategoryAttributes = async () => {
 
   for (const attrData of attributesData) {
     const category_id = Number(attrData.category_id);
-    const type = (attrData.type as AttributeType);
+    const type = attrData.type as AttributeType;
 
     const existing = await attributeRepo.findOne({
-      where: { category_id, name: attrData.name }
+      where: { category_id, name: attrData.name },
     });
 
     if (!existing) {

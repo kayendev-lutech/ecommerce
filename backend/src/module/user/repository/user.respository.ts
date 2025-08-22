@@ -28,7 +28,12 @@ export class UserRepository {
     }
     const validFilterFields = ['category_id', 'is_active', 'is_visible', 'currency_code'];
     for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null && value !== '' && validFilterFields.includes(key)) {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== '' &&
+        validFilterFields.includes(key)
+      ) {
         qb.andWhere(`product.${key} = :${key}`, { [key]: value });
       }
     }

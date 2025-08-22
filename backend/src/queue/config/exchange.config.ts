@@ -20,7 +20,7 @@ export const ROUTING_KEYS = {
 
 export const QUEUES = {
   ORDER_PROCESSING: 'order_processing',
-  ORDER_NOTIFICATION: 'order_notification', 
+  ORDER_NOTIFICATION: 'order_notification',
   INVENTORY_UPDATE: 'inventory_update',
   EMAIL_NOTIFICATION: 'email_notification',
   SMS_NOTIFICATION: 'sms_notification',

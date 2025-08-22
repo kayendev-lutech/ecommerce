@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateOrderItem1755511919035 implements MigrationInterface {
-    name = 'CreateOrderItem1755511919035'
+  name = 'CreateOrderItem1755511919035';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "order_items" (
                 "id" SERIAL NOT NULL,
                 "order_id" integer NOT NULL,
@@ -24,32 +24,44 @@ export class CreateOrderItem1755511919035 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`CREATE INDEX "IDX_order_items_order_id" ON "order_items" ("order_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_order_items_product_id" ON "order_items" ("product_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_order_items_variant_id" ON "order_items" ("variant_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_order_items_order_id" ON "order_items" ("order_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_order_items_product_id" ON "order_items" ("product_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_order_items_variant_id" ON "order_items" ("variant_id")`,
+    );
 
-        // Foreign keys
-        await queryRunner.query(`
+    // Foreign keys
+    await queryRunner.query(`
             ALTER TABLE "order_items"
             ADD CONSTRAINT "FK_order_items_order_id" FOREIGN KEY ("order_id") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "order_items"
             ADD CONSTRAINT "FK_order_items_product_id" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "order_items"
             ADD CONSTRAINT "FK_order_items_variant_id" FOREIGN KEY ("variant_id") REFERENCES "variants"("id") ON DELETE RESTRICT ON UPDATE CASCADE
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "order_items" DROP CONSTRAINT IF EXISTS "FK_order_items_variant_id"`);
-        await queryRunner.query(`ALTER TABLE "order_items" DROP CONSTRAINT IF EXISTS "FK_order_items_product_id"`);
-        await queryRunner.query(`ALTER TABLE "order_items" DROP CONSTRAINT IF EXISTS "FK_order_items_order_id"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_order_items_variant_id"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_order_items_product_id"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_order_items_order_id"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "order_items"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "order_items" DROP CONSTRAINT IF EXISTS "FK_order_items_variant_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "order_items" DROP CONSTRAINT IF EXISTS "FK_order_items_product_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "order_items" DROP CONSTRAINT IF EXISTS "FK_order_items_order_id"`,
+    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_order_items_variant_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_order_items_product_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_order_items_order_id"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "order_items"`);
+  }
 }

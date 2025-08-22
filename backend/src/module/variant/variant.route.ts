@@ -5,7 +5,6 @@ import { CreateVariantDto } from '@module/variant//dto/create-variant.dto';
 import { UpdateVariantDto } from '@module/variant//dto/update-variant.dto';
 import { validateRequest } from '@middlewares/dto-validator';
 import { IdParamDto } from '@module/variant/dto/variant-id-query.dto';
-import { ProductIdQueryDto } from '@module/variant/dto/product-id-query.dto';
 import { ListVariantReqDto } from './dto/list-variant-req.dto';
 const router = Router();
 const wrappedVariantController = new WrapperClasss(
