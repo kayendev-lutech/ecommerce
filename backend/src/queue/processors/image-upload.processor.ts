@@ -1,7 +1,10 @@
 import { CloudinaryService } from '@services/cloudinary.service';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { RedisService } from '@services/redis.service';
-import { getProductMetaCacheKey, invalidateProductListCache } from '@utils/product/product-cache.utils';
+import {
+  getProductMetaCacheKey,
+  invalidateProductListCache,
+} from '@module/product/helper/product-cache.utils';
 import { logger } from '@logger/logger';
 import { UploadImageJobPayload } from '../jobs/upload-image.job';
 import { JobData } from '../interface/job-data.interface';
@@ -12,40 +15,44 @@ export class ImageUploadProcessor {
   private redisService = new RedisService();
 
   async processUploadImageJob(jobData: JobData): Promise<void> {
-    const payload: UploadImageJobPayload = jobData.payload;
-    
+    const { productId, imageBuffer, originalName, mimetype, size, oldPublicId } = jobData.payload;
+
     try {
-      logger.info(`Processing image upload for product ${payload.productId}`);
+      logger.info(`Processing image upload for product ${productId}`);
 
-      const imageBuffer = Buffer.from(payload.imageBuffer, 'base64');
-
-      const uploadResult = await this.cloudinaryService.uploadImage(imageBuffer, {
+      const buffer = Buffer.from(imageBuffer, 'base64');
+      const uploadResult = await this.cloudinaryService.uploadImage(buffer, {
         folder: 'products',
-        public_id: `product_${payload.productId}_${Date.now()}`,
+        public_id: `product_${productId}_${Date.now()}`,
       });
 
-      // Update product in database
-      const updatedProduct = await this.productRepository.updateProduct(payload.productId, {
+      const updatedProduct = await this.productRepository.updateProduct(productId, {
         image_url: uploadResult.secure_url,
       });
+      if (!updatedProduct) throw new Error(`Product ${productId} not found`);
 
-      if (!updatedProduct) {
-        throw new Error(`Product ${payload.productId} not found`);
-      }
-
-      await this.updateProductCache(payload.productId, uploadResult.secure_url, updatedProduct.updated_at);
-
-      // Invalidate list cache
+      await this.updateProductCache(productId, uploadResult.secure_url, updatedProduct.updated_at);
       await invalidateProductListCache(this.redisService);
 
-      logger.info(`Image upload completed for product ${payload.productId}: ${uploadResult.secure_url}`);
-    } catch (error) {
-      logger.error(`Error processing image upload for product ${payload.productId}:`, error);
-      throw error;
+      logger.info(`Image upload completed for product ${productId}: ${uploadResult.secure_url}`);
+
+      if (oldPublicId) {
+        this.cloudinaryService
+          .deleteImage(oldPublicId)
+          .then(() => logger.info(`Deleted old image: ${oldPublicId}`))
+          .catch((err) => logger.warn(`Failed to delete old image ${oldPublicId}`, err));
+      }
+    } catch (err) {
+      logger.error(`Image upload failed for product ${productId}`, err);
+      throw err;
     }
   }
 
-  private async updateProductCache(productId: number, imageUrl: string, updatedAt: Date): Promise<void> {
+  private async updateProductCache(
+    productId: number,
+    imageUrl: string,
+    updatedAt: Date,
+  ): Promise<void> {
     try {
       const metaKey = getProductMetaCacheKey(productId);
       const cachedMeta = await this.redisService.get<any>(metaKey);

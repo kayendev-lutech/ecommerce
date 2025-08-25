@@ -5,21 +5,21 @@ import { Variant } from '@module/variant/entity/variant.entity';
 import { ICacheConfig } from '../interfaces/cache-strategy.interface';
 import { pick } from 'lodash';
 import { logger } from '@logger/logger';
-import { 
-  getProductMetaCacheKey, 
-  getProductPriceCacheKey, 
+import {
+  getProductMetaCacheKey,
+  getProductPriceCacheKey,
   getVariantsCacheKey,
-  invalidateProductListCache 
-} from '@utils/product/product-cache.utils';
+  invalidateProductListCache,
+} from '@module/product/helper/product-cache.utils';
 
 export class ProductCacheStrategy extends BaseCacheStrategy<Product> {
   constructor(redisService: RedisService, config?: Partial<ICacheConfig>) {
     const defaultConfig: ICacheConfig = {
       metaTTL: 60 * 60 * 24, // 1 day
-      priceTTL: 300,         // 5 minutes
-      variantsTTL: 300,      // 5 minutes
-      listTTL: 180,          // 3 minutes
-      GetOrSetTTL: 120,          // 2 minutes
+      priceTTL: 300, // 5 minutes
+      variantsTTL: 300, // 5 minutes
+      listTTL: 180, // 3 minutes
+      GetOrSetTTL: 120, // 2 minutes
     };
     super(redisService, { ...defaultConfig, ...config });
   }
@@ -54,9 +54,15 @@ export class ProductCacheStrategy extends BaseCacheStrategy<Product> {
     const variantsKey = getVariantsCacheKey(id);
 
     const metaData = pick(product, [
-      'id', 'name', 'slug', 'description', 
-      'currency_code', 'category_id', 'image_url', 
-      'created_at', 'updated_at'
+      'id',
+      'name',
+      'slug',
+      'description',
+      'currency_code',
+      'category_id',
+      'image_url',
+      'created_at',
+      'updated_at',
     ]);
 
     const priceData = pick(product, ['price', 'discount_price', 'is_active', 'is_visible']);
@@ -74,23 +80,29 @@ export class ProductCacheStrategy extends BaseCacheStrategy<Product> {
   async updateMeta(id: number, product: Partial<Product>): Promise<void> {
     const metaKey = getProductMetaCacheKey(id);
     const cachedMeta = await this.safeGet<Partial<Product>>(metaKey);
-    
+
     const metaData = pick(product, [
-      'id', 'name', 'slug', 'description', 
-      'currency_code', 'category_id', 'image_url', 
-      'created_at', 'updated_at'
+      'id',
+      'name',
+      'slug',
+      'description',
+      'currency_code',
+      'category_id',
+      'image_url',
+      'created_at',
+      'updated_at',
     ]);
 
     const newMeta = { ...(cachedMeta || {}), ...metaData };
     await this.safeSet(metaKey, newMeta, this.config.metaTTL);
-    
+
     logger.info(`Product ${id} meta cache updated`);
   }
 
   async updatePrice(id: number, product: Partial<Product>): Promise<void> {
     const priceKey = getProductPriceCacheKey(id);
     const priceData = pick(product, ['price', 'discount_price', 'is_active', 'is_visible']);
-    
+
     await this.safeSet(priceKey, priceData, this.config.priceTTL);
     logger.info(`Product ${id} price cache updated`);
   }
@@ -109,7 +121,7 @@ export class ProductCacheStrategy extends BaseCacheStrategy<Product> {
       `product:${id}:detail`,
       `product:${id}:lock`,
     ];
-    
+
     await this.safeDel(keys);
     logger.info(`All cache invalidated for product ${id}`);
   }
@@ -121,10 +133,10 @@ export class ProductCacheStrategy extends BaseCacheStrategy<Product> {
   async smartUpdate(id: number, updateData: Partial<Product>, product: Product): Promise<void> {
     const priceFields = ['price', 'discount_price', 'is_active', 'is_visible'];
     const metaFields = ['name', 'slug', 'description', 'currency_code', 'category_id', 'image_url'];
-    
+
     const updatedFields = Object.keys(updateData);
-    const isOnlyPriceUpdate = updatedFields.every(key => priceFields.includes(key));
-    const isOnlyMetaUpdate = updatedFields.every(key => metaFields.includes(key));
+    const isOnlyPriceUpdate = updatedFields.every((key) => priceFields.includes(key));
+    const isOnlyMetaUpdate = updatedFields.every((key) => metaFields.includes(key));
 
     if (isOnlyPriceUpdate) {
       await this.updatePrice(id, product);

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/base.entity';
 import { Variant } from '@module/variant/entity/variant.entity';
 import { CurrencyCode } from '@common/currency.enum';
+import { ProductAttributeValue } from './product-attribute-value.entity';
 
 @Entity('products')
 export class Product extends BaseEntity {
@@ -38,12 +39,34 @@ export class Product extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   is_visible!: boolean;
 
-  @Column({ type: 'json', nullable: true })
-  metadata?: Record<string, any>;
+  // Relations
+  @OneToMany(() => Variant, (variant) => variant.product, { cascade: true })
+  variants!: Variant[];
 
-  @OneToMany(() => Variant, variant => variant.product, { 
-    cascade: true, 
-    eager: false
-  })
-  variants?: Variant[];
+  @OneToMany(() => ProductAttributeValue, (value) => value.product, { cascade: true })
+  attributeValues!: ProductAttributeValue[];
+
+  // Helper method to get attributes as object
+  getAttributes(): Record<string, any> {
+    const result: Record<string, any> = {};
+    if (this.attributeValues) {
+      this.attributeValues.forEach((value) => {
+        const attrName = value.categoryAttribute.name;
+        const dataType = value.categoryAttribute.type;
+        const rawValue = value.getRawValue();
+
+        switch (dataType) {
+          case 'number':
+            result[attrName] = parseFloat(rawValue);
+            break;
+          case 'boolean':
+            result[attrName] = rawValue === 'true';
+            break;
+          default:
+            result[attrName] = rawValue;
+        }
+      });
+    }
+    return result;
+  }
 }

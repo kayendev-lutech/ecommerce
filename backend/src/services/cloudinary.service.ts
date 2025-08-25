@@ -9,15 +9,13 @@ export class CloudinaryService {
       folder?: string;
       public_id?: string;
       transformation?: any[];
-    } = {}
+    } = {},
   ): Promise<UploadApiResponse> {
     try {
       const uploadOptions = {
         folder: options.folder || 'products',
         allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-        transformation: options.transformation || [
-          { width: 800, height: 800, crop: 'limit' }
-        ],
+        transformation: options.transformation || [{ width: 800, height: 800, crop: 'limit' }],
         ...options,
       };
 
@@ -25,13 +23,12 @@ export class CloudinaryService {
 
       if (Buffer.isBuffer(file)) {
         uploadResult = await new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            uploadOptions,
-            (error, result) => {
+          cloudinary.uploader
+            .upload_stream(uploadOptions, (error, result) => {
               if (error) reject(error);
               else resolve(result as UploadApiResponse);
-            }
-          ).end(file);
+            })
+            .end(file);
         });
       } else {
         uploadResult = await cloudinary.uploader.upload(file.path, uploadOptions);

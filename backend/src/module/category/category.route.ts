@@ -8,10 +8,8 @@ import { UpdateCategoryDto } from '@module/category/dto/update-category.dto';
 import Container from 'typedi';
 const router = Router();
 
-const categoryController = Container.get(CategoryController);
-
 const wrappedCategoryController = new WrapperClasss(
-  categoryController,
+  new CategoryController(),
 ) as unknown as CategoryController & { [key: string]: any };
 /**
  * @swagger
@@ -72,11 +70,7 @@ router.get('/:id', wrappedCategoryController.getById);
  *       201:
  *         description: Danh mục đã được tạo
  */
-router.post(
-  '/',
-  validateRequest(CreateCategoryDto),
-  wrappedCategoryController.create
-);
+router.post('/', validateRequest(CreateCategoryDto), wrappedCategoryController.create);
 
 /**
  * @swagger

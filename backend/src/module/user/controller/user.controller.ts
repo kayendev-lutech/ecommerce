@@ -27,19 +27,19 @@ export class UserController {
   }
 
   async getAll({ query }: WrappedRequest): Promise<OffsetPaginatedDto<UserResDto>> {
-      const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
-      
-      const result = await this.userService.getAllWithPagination({
-        page: Number(page),
-        limit: Number(limit),
-        search: search ? String(search) : undefined,
-        order,
-        sortBy,
-        ...filters,
-      });
-  
-      return result;
-    }
+    const { page = 1, limit = 10, search, order = 'DESC', sortBy, ...filters } = query;
+
+    const result = await this.userService.getAllWithPagination({
+      page: Number(page),
+      limit: Number(limit),
+      search: search ? String(search) : undefined,
+      order,
+      sortBy,
+      ...filters,
+    });
+
+    return result;
+  }
 
   async createUser({ body }: WrappedRequest) {
     const created = await this.userService.createUser(body);

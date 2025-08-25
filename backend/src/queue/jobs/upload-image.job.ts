@@ -6,6 +6,7 @@ export interface UploadImageJobPayload {
   originalName: string;
   mimetype: string;
   size: number;
+  oldPublicId?: string;
 }
 
 export class UploadImageJob {
@@ -13,8 +14,8 @@ export class UploadImageJob {
     return {
       id: uuidv4(),
       type: 'UPLOAD_PRODUCT_IMAGE',
-      payload,
       maxRetries: 3,
+      payload,
     };
   }
 }

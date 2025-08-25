@@ -31,10 +31,8 @@ export class OffsetPaginationDto {
     this.limit = Number(pageOptions.limit ?? 10);
     this.currentPage = Number(pageOptions.page ?? 1);
     this.totalRecords = totalRecords;
-    this.totalPages =
-      this.limit > 0 ? Math.ceil(totalRecords / this.limit) : 0;
-    this.nextPage =
-      this.currentPage < this.totalPages ? this.currentPage + 1 : undefined;
+    this.totalPages = this.limit > 0 ? Math.ceil(totalRecords / this.limit) : 0;
+    this.nextPage = this.currentPage < this.totalPages ? this.currentPage + 1 : undefined;
     this.previousPage =
       this.currentPage > 1 && this.currentPage - 1 < this.totalPages
         ? this.currentPage - 1

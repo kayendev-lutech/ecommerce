@@ -1,59 +1,39 @@
-import { JsonController, Get, Post, Put, Delete, Param, Body, QueryParams } from 'routing-controllers';
-import { Service } from 'typedi';
 import { CategoryService } from '@module/category/service/category.service';
 import { CreateCategoryDto } from '@module/category/dto/create-category.dto';
 import { UpdateCategoryDto } from '@module/category/dto/update-category.dto';
 import { HttpResponse } from '@utils/http-response.util';
+import { WrappedRequest } from '@utils/wrapper.util';
 
-@Service()
-@JsonController('/category')
 export class CategoryController {
-  constructor(
-    private readonly categoryService: CategoryService
-  ) {}
+  private categoryService = new CategoryService();
 
-  @Get('/')
   async getAll() {
     const result = await this.categoryService.getAll();
     return HttpResponse.ok(result, 'Categories retrieved successfully');
   }
 
-  @Get('/:id')
-  async getById(@Param('id') id: string) {
-    try {
-      const category = await this.categoryService.getByIdOrFail(id);
-      return HttpResponse.ok(category, 'Category retrieved successfully');
-    } catch (error: any) {
-      console.error(
-        `CategoryController.getById error for id=${id}:`,
-        error?.message || error,
-        error?.stack || ''
-      );
-      throw error;
-    }
+  async getById({ params }: WrappedRequest) {
+    const category = await this.categoryService.getById(params.id);
+    return HttpResponse.ok(category, 'Category retrieved successfully');
   }
 
-  @Post('/')
-  async create(@Body() body: CreateCategoryDto) {
-    const created = await this.categoryService.create(body);
+  async create({ body }: WrappedRequest) {
+    const created = await this.categoryService.create(body as CreateCategoryDto);
     return HttpResponse.created(created, 'Category created successfully');
   }
 
-  @Put('/:id')
-  async update(@Param('id') id: string, @Body() body: UpdateCategoryDto) {
-    const updated = await this.categoryService.update(id, body);
+  async update({ params, body }: WrappedRequest) {
+    const updated = await this.categoryService.update(params.id, body as UpdateCategoryDto);
     return HttpResponse.ok(updated, 'Category updated successfully');
   }
 
-  @Delete('/:id')
-  async delete(@Param('id') id: string) {
-    await this.categoryService.delete(id);
+  async delete({ params }: WrappedRequest) {
+    await this.categoryService.delete(params.id);
     return HttpResponse.noContent('Category deleted successfully');
   }
 
-  @Get('/parent/:parentId')
-  async getByParent(@Param('parentId') parentId: string) {
-    const categories = await this.categoryService.getByParentId(parseInt(parentId));
+  async getByParent({ params }: WrappedRequest) {
+    const categories = await this.categoryService.getByParentId(parseInt(params.parentId));
     return HttpResponse.ok(categories, 'Child categories retrieved successfully');
   }
 }

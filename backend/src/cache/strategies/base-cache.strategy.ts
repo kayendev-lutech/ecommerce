@@ -37,7 +37,7 @@ export abstract class BaseCacheStrategy<T> implements ICacheStrategy<T> {
   protected async safeDel(key: string | string[]): Promise<void> {
     try {
       if (Array.isArray(key)) {
-        await Promise.allSettled(key.map(k => this.redisService.del(k)));
+        await Promise.allSettled(key.map((k) => this.redisService.del(k)));
       } else {
         await this.redisService.del(key);
       }

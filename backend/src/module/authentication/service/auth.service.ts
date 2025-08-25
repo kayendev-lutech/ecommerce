@@ -24,14 +24,18 @@ export class AuthService {
       throw new BadRequestException('Email and username are required');
     }
 
-    Optional.of(await this.authRepository.findUserByEmailOrUsername(
-      createUserDto.email,
-      createUserDto.username,
-    )).throwIfExist(new ConflictException('Username or email already exists'));
+    Optional.of(
+      await this.authRepository.findUserByEmailOrUsername(
+        createUserDto.email,
+        createUserDto.username,
+      ),
+    ).throwIfExist(new ConflictException('Username or email already exists'));
 
     const userWithRole = { ...createUserDto, role: 'user' };
     const userDetails = await this.authRepository.createUser(userWithRole);
-    Optional.of(userDetails).throwIfNullable(new InternalServerErrorException('Failed to register user'));
+    Optional.of(userDetails).throwIfNullable(
+      new InternalServerErrorException('Failed to register user'),
+    );
 
     const payload = { userId: userDetails?.id };
     const token = generateAccessToken(payload);
@@ -50,32 +54,32 @@ export class AuthService {
   }
 
   async login(loginUserDto: LoginUserDto, deviceId: string): Promise<any> {
-      const { email, password } = loginUserDto;
-      const userDetails = await this.authRepository.comparePassword(email, password);
+    const { email, password } = loginUserDto;
+    const userDetails = await this.authRepository.comparePassword(email, password);
 
-      if (!userDetails) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
+    if (!userDetails) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-      const payload = {
-        userId: userDetails.id,
-      };
-      const token = generateAccessToken(payload);
-      const refreshToken = generateRefreshToken(payload);
+    const payload = {
+      userId: userDetails.id,
+    };
+    const token = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
 
-      await this.authRepository.addToken({
-        user_id: payload.userId,
-        token: refreshToken,
-        type: 'refresh',
-        expires_at: dayjs().add(7, 'day').toDate(),
-        created_ip: '',
-        user_agent: deviceId,
-      });
+    await this.authRepository.addToken({
+      user_id: payload.userId,
+      token: refreshToken,
+      type: 'refresh',
+      expires_at: dayjs().add(7, 'day').toDate(),
+      created_ip: '',
+      user_agent: deviceId,
+    });
 
-      return {
-        token: token,
-        refreshToken: refreshToken,
-      };
+    return {
+      token: token,
+      refreshToken: refreshToken,
+    };
   }
 
   async refresh(refreshToken: string, deviceId: string) {

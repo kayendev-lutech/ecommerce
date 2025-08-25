@@ -380,6 +380,84 @@
             ]
         },
         {
+            "name": "Order",
+            "item": [
+                {
+                "name": "Get All Orders",
+                "request": {
+                    "method": "GET",
+                    "url": {
+                    "raw": "{{url}}/api/v1/order?page=1&limit=10",
+                    "host": ["{{url}}"],
+                    "path": ["api", "v1", "order"],
+                    "query": [
+                        { "key": "page", "value": "1" },
+                        { "key": "limit", "value": "10" }
+                    ]
+                    }
+                }
+                },
+                {
+                "name": "Get Order by ID",
+                "request": {
+                    "method": "GET",
+                    "url": {
+                    "raw": "{{url}}/api/v1/order/1",
+                    "host": ["{{url}}"],
+                    "path": ["api", "v1", "order", "1"]
+                    }
+                }
+                },
+                {
+                "name": "Create Order",
+                "request": {
+                    "method": "POST",
+                    "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                    ],
+                    "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"customer_name\": \"Nguyễn Văn A\",\n  \"customer_email\": \"nguyenvana@example.com\",\n  \"customer_phone\": \"0901234567\",\n  \"shipping_address\": \"123 Đường ABC, Quận 1, TP.HCM\",\n  \"billing_address\": \"123 Đường ABC, Quận 1, TP.HCM\",\n  \"payment_method\": \"credit_card\",\n  \"notes\": \"Giao hàng ngoài giờ hành chính\",\n  \"currency_code\": \"VND\",\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"variant_id\": 2,\n      \"quantity\": 2,\n      \"attributes\": {\n        \"color\": \"Red\",\n        \"size\": \"M\"\n      }\n    },\n    {\n      \"product_id\": 2,\n      \"quantity\": 1,\n      \"attributes\": {\n        \"color\": \"Blue\",\n        \"size\": \"L\"\n      }\n    }\n  ]\n}"
+                    },
+                    "url": {
+                    "raw": "{{url}}/api/v1/order",
+                    "host": ["{{url}}"],
+                    "path": ["api", "v1", "order"]
+                    }
+                }
+                },
+                {
+                "name": "Update Order",
+                "request": {
+                    "method": "PUT",
+                    "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                    ],
+                    "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"status\": \"confirmed\",\n  \"notes\": \"Đã xác nhận đơn hàng\"\n}"
+                    },
+                    "url": {
+                    "raw": "{{url}}/api/v1/order/1",
+                    "host": ["{{url}}"],
+                    "path": ["api", "v1", "order", "1"]
+                    }
+                }
+                },
+                {
+                "name": "Delete Order",
+                "request": {
+                    "method": "DELETE",
+                    "url": {
+                    "raw": "{{url}}/api/v1/order/1",
+                    "host": ["{{url}}"],
+                    "path": ["api", "v1", "order", "1"]
+                    }
+                }
+                }
+            ]
+            },
+        {
             "name": "Product",
             "item": [
                 {

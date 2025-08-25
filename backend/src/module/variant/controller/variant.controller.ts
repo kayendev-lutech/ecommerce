@@ -4,7 +4,7 @@ import { HttpResponse } from '@utils/http-response.util';
 import { VariantResDto } from '@module/variant/dto/variant.res.dto';
 import { ListVariantReqDto } from '@module/variant/dto/list-variant-req.dto';
 import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
-import { OrderDirection } from '@common/order.enum'; 
+import { OrderDirection } from '@common/order.enum';
 
 export class VariantController {
   private variantService = new VariantService();
@@ -36,7 +36,7 @@ export class VariantController {
 
     return this.variantService.getAllWithPagination(reqDto);
   }
-  
+
   /**
    * Get variant by ID
    */

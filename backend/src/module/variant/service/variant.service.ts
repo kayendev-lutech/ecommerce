@@ -1,6 +1,6 @@
 import { VariantRepository } from '@module/variant/repository/variant.repository';
 import { Variant } from '@module/variant/entity/variant.entity';
-import { ConflictException, NotFoundException } from '@errors/app-error';
+import { BadRequestException, NotFoundException } from '@errors/app-error';
 import { ProductRepository } from '@module/product/repository/product.respository';
 import { Optional } from '@utils/optional.utils';
 import { ListVariantReqDto } from '@module/variant/dto/list-variant-req.dto';
@@ -11,6 +11,12 @@ import { UpdateVariantDto } from '@module/variant/dto/update-variant.dto';
 import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
 import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
 import { buildPaginator } from '@utils/cursor-pagination';
+import {
+  saveVariantAttributes,
+  validateCreateVariant,
+  validateUpdateVariant,
+  validateVariantAttributes,
+} from '../helper/variant-validate.utils';
 
 export class VariantService {
   private variantRepository = new VariantRepository();
@@ -66,7 +72,16 @@ export class VariantService {
    * Get variant by ID or throw error if not found
    */
   async getById(id: number): Promise<Variant> {
-    return Optional.of(await this.variantRepository.findById(id))
+    return Optional.of(
+      await this.variantRepository.repository.findOne({
+        where: { id },
+        relations: [
+          'attributeValues',
+          'attributeValues.categoryAttribute',
+          'attributeValues.categoryAttributeOption',
+        ],
+      }),
+    )
       .throwIfNullable(new NotFoundException('Variant not found'))
       .get<Variant>();
   }
@@ -80,36 +95,42 @@ export class VariantService {
       .get();
     return this.variantRepository.findByProductId(id);
   }
-
+  async getByIdOrFail(id: number): Promise<Variant> {
+    return Optional.of(await this.variantRepository.findById(id))
+      .throwIfNullable(new NotFoundException(`Product with id ${id} not found`))
+      .get<Variant>();
+  }
   /**
    * Update variant by ID
    */
   async update(id: number, data: UpdateVariantDto): Promise<Variant> {
-    const variant = Optional.of(await this.getById(id))
-      .throwIfNullable(new NotFoundException('Variant not found'))
-      .get<Variant>();
+    logger.info('Start updating variant', { variantId: id });
 
-    if (data.name && variant.product_id) {
-      const exist = await this.variantRepository.findByNameAndProductId(
-        data.name,
-        variant.product_id,
-      );
-      Optional.of(exist).throwIfExist(new ConflictException('Variant name must be unique within a product'));
+    const currentVariant = await this.getByIdOrFail(id);
+
+    await validateUpdateVariant(this.variantRepository, id, data, currentVariant);
+
+    const { attributes, ...updateData } = data;
+
+    if (attributes !== undefined && Object.keys(attributes).length > 0) {
+      await validateVariantAttributes(currentVariant.product_id, id, attributes);
     }
 
-    if (data.sku) {
-      const existSku = await this.variantRepository.findBySku(data.sku);
-      Optional.of(existSku).throwIfExist(new ConflictException('SKU already exists'));
+    logger.debug('All validations passed, updating variant');
+
+    const updatedVariant = await this.variantRepository.updateVariant(id, updateData);
+    if (!updatedVariant) {
+      throw new NotFoundException('Variant not found after update attempt');
     }
 
-    const updateData: Partial<Variant> = {
-      ...data,
-      ...(data.product_id !== undefined && { product_id: data.product_id }),
-    };
+    if (attributes !== undefined) {
+      await saveVariantAttributes(id, attributes);
+    }
 
-    return Optional.of(await this.variantRepository.updateVariant(id, updateData))
-      .throwIfNullable(new NotFoundException('Variant not found after update attempt'))
-      .get<Variant>();
+    const result = await this.getById(id);
+    logger.info(`Variant ${id} updated successfully`);
+
+    return result!;
   }
 
   /**
@@ -119,33 +140,44 @@ export class VariantService {
    * @throws ConflictException nếu tên hoặc SKU bị trùng
    */
   async create(data: CreateVariantDto): Promise<Variant> {
-    Optional.of(await this.productRepository.findById(data.product_id)).throwIfNullable(
-      new NotFoundException('Product not found'),
-    );
+    logger.info('Start creating variant', { name: data.name, product_id: data.product_id });
 
-    if (data.name) {
-      Optional.of(
-        await this.variantRepository.findByNameAndProductId(data.name, data.product_id),
-      ).throwIfExist(new ConflictException('Variant name must be unique within a product'));
+    // 1. Validate basic variant data
+    await validateCreateVariant(this.variantRepository, this.productRepository, data);
+
+    const { attributes = {}, ...variantData } = data;
+
+    if (Object.keys(attributes).length > 0) {
+      await validateVariantAttributes(data.product_id, null, attributes);
     }
 
-    if (data.sku) {
-      Optional.of(await this.variantRepository.findBySku(data.sku)).throwIfExist(
-        new ConflictException('SKU already exists'),
-      );
+    logger.debug('All validations passed, creating variant');
+
+    let savedVariant: Variant;
+    try {
+      const variantToCreate = {
+        ...variantData,
+        currency_code: data.currency_code || 'VND',
+        is_active: data.is_active ?? true,
+        is_default: data.is_default ?? false,
+        sort_order: data.sort_order ?? 0,
+      };
+
+      savedVariant = await this.variantRepository.createVariant(variantToCreate);
+      logger.info('Variant saved successfully', { variantId: savedVariant.id });
+    } catch (err: any) {
+      logger.error('Database error saving variant', err);
+      throw new BadRequestException('Failed to save variant');
     }
 
-    const variantData = {
-      ...data,
-      currency_code: data.currency_code || 'VND',
-      price: data.price,
-      is_active: data.is_active ?? true,
-      is_default: data.is_default ?? false,
-      sort_order: data.sort_order ?? 0,
-      product_id: data.product_id,
-    };
+    if (Object.keys(attributes).length > 0) {
+      await saveVariantAttributes(savedVariant.id, attributes);
+    }
 
-    return this.variantRepository.createVariant(variantData);
+    const result = await this.getById(savedVariant.id);
+    logger.info(`Variant ${savedVariant.id} created successfully`);
+
+    return result!;
   }
 
   /**

@@ -1,8 +1,4 @@
-import {
-  DEFAULT_CURRENT_PAGE,
-  DEFAULT_PAGE_LIMIT,
-  Order,
-} from '@common/app.constant';
+import { DEFAULT_CURRENT_PAGE, DEFAULT_PAGE_LIMIT, Order } from '@common/app.constant';
 import {
   EnumFieldOptional,
   NumberFieldOptional,

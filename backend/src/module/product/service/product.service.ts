@@ -1,8 +1,8 @@
+import { CategoryRepository } from '@module/category/repository/category.repository';
 import { ProductRepository } from '@module/product/repository/product.respository.js';
 import { Product } from '@module/product/entity/product.entity.js';
 import { BadRequestException, ConflictException, NotFoundException } from '@errors/app-error.js';
 import { VariantRepository } from '@module/variant/repository/variant.repository';
-import { Variant } from '@module/variant/entity/variant.entity';
 import { Optional } from '@utils/optional.utils';
 import { OffsetPaginatedDto } from '@common/dto/offset-pagination/paginated.dto';
 import { ProductResDto } from '@module/product/dto/product.res.dto';
@@ -13,30 +13,35 @@ import { buildPaginator } from '@utils/cursor-pagination';
 import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
 import { ListProductReqDto } from '@module/product/dto/list-product-req.dto';
 import { OffsetPaginationDto } from '@common/dto/offset-pagination/offset-pagination.dto';
-import { validateVariantNames, buildVariantData, invalidateProductCache, generateListCacheKey } from '@utils/product/product-validate.utils';
 import { CreateProductDto } from '@module/product/dto/create-product.dto';
 import { UpdateProductDto } from '@module/product/dto/update-product.dto';
-import { RedisService } from '@services/redis.service';
-import { logger } from '@logger/logger'; 
-import { pick } from 'lodash';
+import { logger } from '@logger/logger';
 
-import {
-  getProductMetaCacheKey,
-  getProductPriceCacheKey,
-  getVariantsCacheKey,
-  getProductListCacheKey,
-  getOrSetCache,
-  invalidateProductListCache,
-} from '@utils/product/product-cache.utils';
-import { QueueService } from 'src/queue/services/queue.service';
-import { UploadImageJob, UploadImageJobPayload } from 'src/queue/jobs/upload-image.job';
-import sharp from 'sharp';
+import { getProductListCacheKey, getOrSetCache } from '@module/product/helper/product-cache.utils';
+import { QueueService } from '@queue/services/queue.service';
+import { UploadImageJob, UploadImageJobPayload } from '@queue/jobs/upload-image.job';
 import { CacheManager } from '@cache/managers/cache.manager';
 import { ProductCacheStrategy } from '@cache/strategies/product-cache-strategy';
 import { CacheInvalidate } from '@cache/decorators/cacheable.decorator';
+import {
+  extractAttributesAsObject,
+  hasAttributes,
+  updateProductAttributesTransactional,
+} from '@module/product/helper/attribute-value.util';
+import { productAttributeValidator } from '@module/product/helper/product-attribute-validator';
+import {
+  createValidatedVariants,
+  generateListCacheKey,
+  loadCreatedProductResult,
+  saveVariantAttributes,
+  validateCreateProduct,
+  validateVariants,
+} from '../helper/product-validate.utils';
+import { extractPublicIdFromUrl, resizeImageToBase64 } from '@utils/extract-image.utils';
 
 export class ProductService {
   private productRepository = new ProductRepository();
+  private categoryRepository = new CategoryRepository();
   private variantRepository = new VariantRepository();
   private queueService = new QueueService();
   private cacheManager = CacheManager.getInstance();
@@ -53,21 +58,26 @@ export class ProductService {
   }
   /**
    * Retrieves a paginated list of products with optional search, sorting, and additional filters.
-   * Implements cache for product lists based on filters.
+   * @param reqDto ListProductReqDto containing pagination, search, sort, and filter options
+   * @returns OffsetPaginatedDto<ProductResDto>
    */
   async getAllWithPagination(
-  reqDto: ListProductReqDto,
+    reqDto: ListProductReqDto,
   ): Promise<OffsetPaginatedDto<ProductResDto>> {
     const cacheKey = generateListCacheKey(reqDto);
 
-    const result = await getOrSetCache( this.redisService, cacheKey, this.productCache['config'].listTTL, async () => {
+    const result = await getOrSetCache(
+      this.redisService,
+      cacheKey,
+      this.productCache['config'].listTTL,
+      async () => {
         logger.info(`Product list cache miss, querying DB: ${cacheKey}`);
         const { data, total } = await this.productRepository.findWithPagination(reqDto);
         const metaDto = new OffsetPaginationDto(total, reqDto);
         const result = new OffsetPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
         logger.info(`Product list cached: ${cacheKey}`);
         return result;
-      }
+      },
     );
     if (!result) {
       throw new NotFoundException('List products not found');
@@ -85,10 +95,14 @@ export class ProductService {
 
     // create cache key cursor pagination
     const cursorCacheKey = getProductListCacheKey(
-      `cursor:limit:${limit}|after:${afterCursor || ''}|before:${beforeCursor || ''}`
+      `cursor:limit:${limit}|after:${afterCursor || ''}|before:${beforeCursor || ''}`,
     );
 
-    const result = await getOrSetCache(this.redisService, cursorCacheKey, this.productCache['config'].listTTL, async () => {
+    const result = await getOrSetCache(
+      this.redisService,
+      cursorCacheKey,
+      this.productCache['config'].listTTL,
+      async () => {
         logger.info(`Cursor product list cache miss, querying DB: ${cursorCacheKey}`);
         const queryBuilder = this.productRepository.repository.createQueryBuilder('product');
         const paginator = buildPaginator({
@@ -107,7 +121,7 @@ export class ProductService {
         const result = new CursorPaginatedDto(plainToInstance(ProductResDto, data), metaDto);
         logger.info(`Cursor product list cached: ${cursorCacheKey}`);
         return result;
-      }
+      },
     );
     if (result == null) {
       throw new NotFoundException('Cursor product list not found');
@@ -124,96 +138,112 @@ export class ProductService {
       .get<Product>();
   }
   /**
-   * Retrieves a product by its ID, using optimized cache with lock and parallel set.
-   * - Uses cache lock to avoid thundering herd.
-   * - Sets meta, price, variants cache in parallel with different TTLs.
-   * - Only queries DB if any cache part is missing.
+   * Retrieves a product by its ID, including its variants.
+   * @param id Product ID
+   * @returns Product or throws NotFoundException if not found
    */
   async getById(id: number): Promise<Product | null> {
     try {
       const cached = await this.productCache.get(id);
-      if (cached) {
-        return cached;
-      }
+      if (cached) return cached;
 
-      const product = await getOrSetCache( this.redisService, `product:${id}:detail`, this.productCache['config'].GetOrSetTTL , async () => {
+      const product = await getOrSetCache(
+        this.redisService,
+        `product:${id}:detail`,
+        this.productCache['config'].GetOrSetTTL,
+        async () => {
           const dbProduct = await this.productRepository.repository.findOne({
             where: { id },
-            relations: ['variants']
+            relations: [
+              'variants',
+              'attributeValues',
+              'variants.attributeValues',
+              'variants.attributeValues.categoryAttribute',
+              'variants.attributeValues.categoryAttributeOption',
+              'attributeValues.categoryAttribute',
+            ],
           });
-          
+
           if (!dbProduct) return null;
-          
+
           await this.productCache.set(id, dbProduct);
-          
+
           return dbProduct;
-        }
+        },
       );
 
-      return product;
+      return Optional.of(product)
+        .throwIfNullable(new NotFoundException('Product not found'))
+        .get<Product>();
     } catch (error) {
       logger.error(`Error getting product ${id}:`, error);
       throw error;
     }
   }
-  @CacheInvalidate((args) => ['product:list:*'])
-  async create(data: CreateProductDto): Promise<Product> {
-    if (data.slug) {
-      Optional.of(await this.productRepository.findBySlug(data.slug)).throwIfExist(
-        new ConflictException('Slug already exists. Please pick another slug'),
-      );
-    }
-
-    if (data.category_id) {
-      Optional.of(await this.productRepository.findByCategoryId(data.category_id)).throwIfNullable(
-        new NotFoundException('Category not found'),
-      );
-    }
-    const { variants = [], ...productData } = data;
-    let variantsToCreate: Partial<Variant>[] = [];
-
-    if (variants.length > 0) {
-      validateVariantNames(variants);
-      variantsToCreate = buildVariantData(variants, productData as any);
-    } else {
-      variantsToCreate = [
-        {
-          name: `${productData.name} - Default`,
-          price: productData.price,
-          currency_code: productData.currency_code || 'VND',
-          stock: 0,
-          is_default: true,
-          is_active: true,
-          sort_order: 0,
-        },
-      ];
-    }
-
-    const productToCreate = this.productRepository.repository.create({
-      ...productData,
-      variants: variantsToCreate.map((variantData) =>
-        this.variantRepository.repository.create(variantData),
-      ),
-    });
-
-    const createdProduct = await this.productRepository.repository.save(productToCreate);
-
-    // Invalidate list cache after creating new product
-    await this.productCache.set(createdProduct.id, createdProduct);
-    await this.productCache.invalidateList();
-    
-    logger.info(`Product ${createdProduct.id} created successfully and list cache invalidated`);
-
-    return createdProduct;
-  }
   /**
-   * Update product by ID.
-   * Smart cache invalidation:
-   * - Chỉ update price fields → update cache price trực tiếp + invalidate list cache
-   * - Update meta fields → update cache meta + invalidate list cache
-   * - Update variants → invalidate cache variants + invalidate list cache
+   * Creates a new product along with its variants in a transactional manner.
+   *
+   * @param data - Partial product data, optionally including an array of variant data.
+   * @returns A promise that resolves to the created product with its associated variants.
+   * @throws Will throw an error if the slug already exists, variant validation fails, or any database operation fails.
    */
-  async update(id: number, data: UpdateProductDto): Promise<Product> {
+  @CacheInvalidate((args) => ['product:list:*'])
+  async create(data: CreateProductDto): Promise<ProductResDto> {
+    await validateCreateProduct(this.productRepository, this.categoryRepository, data);
+
+    const { variants = [], attributes = {}, ...productData } = data;
+
+    // Validate attributes
+    if (hasAttributes(attributes) && data.category_id) {
+      await productAttributeValidator.validateProductAttributes(data.category_id, attributes);
+    }
+
+    // Validate variants
+    if (variants.length > 0) {
+      if (data.category_id === undefined) {
+        throw new BadRequestException('Category ID is required to validate variants');
+      }
+      await validateVariants(data.category_id, variants);
+    }
+
+    const productToCreate = this.productRepository.repository.create(productData);
+    const savedProduct = Optional.of(await this.productRepository.repository.save(productToCreate))
+      .throwIfNullable(new BadRequestException('Failed to save product'))
+      .get<Product>();
+    logger.info('Product saved successfully', { productId: savedProduct.id });
+
+    // Create variants
+    await createValidatedVariants(
+      this.variantRepository,
+      saveVariantAttributes,
+      savedProduct.id,
+      variants,
+    );
+
+    // Save attributes nếu có
+    if (hasAttributes(attributes)) {
+      await productAttributeValidator.saveProductAttributes(savedProduct.id, attributes);
+    }
+
+    const result = await loadCreatedProductResult(
+      this.productRepository,
+      this.productCache,
+      savedProduct.id,
+    );
+    logger.info(`Product ${result.id} created successfully`);
+
+    return result;
+  }
+
+  /**
+   * Cập nhật sản phẩm theo id, update attribute, invalidate cache thông minh.
+   * @param id ID sản phẩm
+   * @param data Dữ liệu cập nhật
+   * @returns ProductResDto đã cập nhật
+   * @throws NotFoundException nếu không tìm thấy
+   * @throws ConflictException nếu slug trùng
+   */
+  async update(id: number, data: UpdateProductDto): Promise<ProductResDto> {
     await this.getByIdOrFail(id);
 
     if (data.slug) {
@@ -221,93 +251,78 @@ export class ProductService {
         new ConflictException('Slug already exists. Please choose another slug.'),
       );
     }
-    const updated = await this.productRepository.updateProduct(id, data);
-    const product = Optional.of(updated)
-      .throwIfNullable(new NotFoundException('Product not found'))
+
+    const { attributes, ...updateData } = data;
+
+    await this.productRepository.updateProduct(id, updateData);
+
+    if (attributes !== undefined) {
+      await updateProductAttributesTransactional(id, attributes);
+    }
+
+    const productWithAttributes = await this.productRepository.repository.findOne({
+      where: { id },
+      relations: ['variants', 'attributeValues', 'attributeValues.categoryAttribute'],
+    });
+
+    const checkedProduct = Optional.of(productWithAttributes)
+      .throwIfNullable(new NotFoundException('Product not found after update attempt'))
       .get<Product>();
 
-    product.variants = await this.variantRepository.findByProductId(id);
+    const productDto = plainToInstance(ProductResDto, checkedProduct);
+    productDto.attributes = extractAttributesAsObject(checkedProduct.attributeValues || []);
 
-    await this.productCache.smartUpdate(id, data, product);
+    await this.productCache.smartUpdate(id, data, checkedProduct);
 
-    return product;
+    return productDto;
   }
 
+  /**
+   * Xóa sản phẩm theo id, xóa toàn bộ cache liên quan.
+   * @param id ID product
+   * @throws NotFoundException nếu không tìm thấy
+   */
   async delete(id: number): Promise<void> {
     await this.getByIdOrFail(id);
     await this.productRepository.deleteProduct(id);
     // Clear all cache for this product
     await this.productCache.invalidate(id);
     await this.productCache.invalidateList();
-    
+
     logger.info(`Product ${id} deleted and all cache invalidated`);
   }
 
-  async updateProductImage(id: number, imageUrl: string): Promise<Product> {
-    try {
-      await this.getByIdOrFail(id);
+  async uploadProductImage(
+    id: number,
+    file: Express.Multer.File,
+  ): Promise<{ message: string; jobId: string; productId: number }> {
+    const product = await this.getByIdOrFail(id);
 
-      const updated = await this.productRepository.updateProduct(id, {
-        image_url: imageUrl,
-      });
-
-      const product = Optional.of(updated)
-        .throwIfNullable(new NotFoundException('Product not found after update attempt'))
-        .get<Product>();
-
-      await this.productCache.updateMeta(id, {
-        image_url: product.image_url,
-        updated_at: product.updated_at,
-      });
-      
-      await this.productCache.invalidateList();
-
-      logger.info(`Product ${id} image updated, meta cache refreshed, and list cache invalidated`);
-      return product;
-    } catch (error) {
-      logger.error('Update product image error:', error);
-      throw error;
+    if (!file || !file.buffer) {
+      throw new BadRequestException('Invalid file or file buffer is missing');
     }
-  }
-  async uploadProductImageAsync(id: number, file: Express.Multer.File): Promise<{ message: string; jobId: string,productId: number }> {
-    try {
-      await this.getByIdOrFail(id);
+    const oldPublicId = extractPublicIdFromUrl(product.image_url);
 
-      if (!file || !file.buffer) {
-        throw new BadRequestException('Invalid file or file buffer is missing');
-      }
-      const resizedBuffer = await sharp(file.buffer)
-      .resize({
-        width: 800,
-        height: 800,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .toBuffer();
+    const imageBuffer = await resizeImageToBase64(file.buffer);
 
-      const imageBuffer = resizedBuffer.toString('base64');
-      
-      const jobPayload: UploadImageJobPayload = {
-        productId: id,
-        imageBuffer,
-        originalName: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-      };
+    const jobPayload: UploadImageJobPayload = {
+      productId: id,
+      imageBuffer,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      oldPublicId,
+    };
 
-      const job = UploadImageJob.createJob(jobPayload);
-      await this.queueService.addJob('image-upload', job);
+    const job = UploadImageJob.createJob(jobPayload);
+    await this.queueService.addJob('image-upload', job);
 
-      logger.info(`Image upload job ${job.id} queued for product ${id}`);
-      
-      return {
-        message: 'Image upload job queued successfully',
-        jobId: job.id,
-        productId: id
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new ConflictException(`Error queueing image upload: ${errorMessage}`);
-    }
+    logger.info(`Image upload job ${job.id} queued for product ${id}`);
+
+    return {
+      message: 'Image upload job queued successfully',
+      jobId: job.id,
+      productId: id,
+    };
   }
 }
