@@ -27,10 +27,10 @@ export const seedUsers = async () => {
   console.log('Seeded users successfully');
 };
 
-AppDataSource.initialize()
-  .then(() => seedUsers())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Seeding users failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedUsers())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     console.error('Seeding users failed', err);
+//     process.exit(1);
+//   });

@@ -11,7 +11,12 @@ import { UpdateVariantDto } from '@module/variant/dto/update-variant.dto';
 import { CursorPaginatedDto } from '@common/dto/cursor-pagination/paginated.dto';
 import { CursorPaginationDto } from '@common/dto/cursor-pagination/cursor-pagination.dto';
 import { buildPaginator } from '@utils/cursor-pagination';
-import { saveVariantAttributes, validateCreateVariant, validateUpdateVariant, validateVariantAttributes } from '../helper/variant-validate.utils';
+import {
+  saveVariantAttributes,
+  validateCreateVariant,
+  validateUpdateVariant,
+  validateVariantAttributes,
+} from '../helper/variant-validate.utils';
 
 export class VariantService {
   private variantRepository = new VariantRepository();
@@ -20,7 +25,7 @@ export class VariantService {
   async getAllWithPagination(
     reqDto: ListVariantReqDto,
   ): Promise<CursorPaginatedDto<VariantResDto>> {
-    const queryBuilder = this.variantRepository.repository.createQueryBuilder('variant');
+    const queryBuilder = this.variantRepository.createQueryBuilder('variant');
 
     if (reqDto.product_id) {
       queryBuilder.andWhere('variant.product_id = :product_id', { product_id: reqDto.product_id });
@@ -50,7 +55,7 @@ export class VariantService {
     const result = await paginator.paginate(queryBuilder);
     const data = Array.isArray(result.data) ? result.data : [];
     const cursor = result.cursor ?? { afterCursor: null, beforeCursor: null };
-  
+
     const metaDto = new CursorPaginationDto(
       data.length,
       cursor.afterCursor ?? '',
@@ -67,10 +72,18 @@ export class VariantService {
    * Get variant by ID or throw error if not found
    */
   async getById(id: number): Promise<Variant> {
-    return Optional.of(await this.variantRepository.repository.findOne({ where: { id },
-      relations: ['attributeValues', 'attributeValues.categoryAttribute', 'attributeValues.categoryAttributeOption'],
-    })) .throwIfNullable(new NotFoundException('Variant not found'))
-        .get<Variant>();
+    return Optional.of(
+      await this.variantRepository.findOne({
+        where: { id },
+        relations: [
+          'attributeValues',
+          'attributeValues.categoryAttribute',
+          'attributeValues.categoryAttributeOption',
+        ],
+      }),
+    )
+      .throwIfNullable(new NotFoundException('Variant not found'))
+      .get<Variant>();
   }
 
   /**

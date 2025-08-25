@@ -17,7 +17,7 @@ class QueueWorker {
       }
 
       await RabbitMQConfig.getInstance().connect();
-      
+
       // Start processing queues
       for (const { name, processor, handler } of queueRegistry) {
         await this.queueService.processQueue(name, handler(processor));
@@ -34,12 +34,12 @@ class QueueWorker {
   async stop(): Promise<void> {
     try {
       await RabbitMQConfig.getInstance().disconnect();
-      
+
       if (AppDataSource.isInitialized) {
         await AppDataSource.destroy();
         logger.info('Database disconnected in worker');
       }
-      
+
       logger.info('Queue worker stopped');
     } catch (error) {
       logger.error('Error stopping worker:', error);

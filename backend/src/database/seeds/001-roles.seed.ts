@@ -20,10 +20,10 @@ export const seedRoles = async () => {
   console.log('Seeded roles successfully');
 };
 
-AppDataSource.initialize()
-  .then(() => seedRoles())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Seeding roles failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedRoles())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     console.error('Seeding roles failed', err);
+//     process.exit(1);
+//   });

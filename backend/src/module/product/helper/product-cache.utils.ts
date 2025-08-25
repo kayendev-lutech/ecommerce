@@ -1,30 +1,32 @@
-import { RedisService } from "@services/redis.service";
+import { ProductCacheKey } from '@common/cache.enum';
+import { RedisService } from '@services/redis.service';
+import util from 'util';
 
 export function getProductCacheKey(id: number): string {
-  return `product:${id}`;
+  return util.format(ProductCacheKey.Product, id);
 }
 
 export function getVariantsCacheKey(productId: number): string {
-  return `product:${productId}:variants`;
+  return util.format(ProductCacheKey.Variants, productId);
 }
 
 export function getProductMetaCacheKey(id: number): string {
-  return `product:${id}:meta`;
+  return util.format(ProductCacheKey.Meta, id);
 }
 
 export function getProductPriceCacheKey(id: number): string {
-  return `product:${id}:price`;
+  return util.format(ProductCacheKey.Price, id);
 }
 
 export function getProductListCacheKey(filters: string): string {
-  return `product:list:${filters}`;
+  return util.format(ProductCacheKey.List, filters);
 }
 
 export async function getOrSetCache<T>(
   redisService: RedisService,
   key: string,
   ttl: number,
-  fetchFn: () => Promise<T | null>
+  fetchFn: () => Promise<T | null>,
 ): Promise<T | null> {
   let value = await redisService.get<T>(key);
   if (value !== null && value !== undefined) return value;
@@ -44,10 +46,10 @@ export async function getOrSetCache<T>(
   await redisService.del(lockKey);
   return data;
 }
- /**
-   * Invalidate all product list cache entries
-   * Sử dụng pattern matching để xóa tất cả cache list
-   */
+/**
+ * Invalidate all product list cache entries
+ * Sử dụng pattern matching để xóa tất cả cache list
+ */
 export async function invalidateProductListCache(redisService: RedisService): Promise<void> {
   try {
     const listCachePattern = 'product:list:*';

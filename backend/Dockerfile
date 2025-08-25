@@ -23,4 +23,5 @@ CMD sh -c "\
   node dist/database/seeds/004-products.seed.js && \
   node dist/database/seeds/005-variants.seed.js && \
   node dist/database/seeds/006-tokens.seed.js && \
+  npm run docker:seed && \
   node dist/server.js"

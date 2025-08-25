@@ -1,4 +1,3 @@
-import { BaseCacheStrategy } from './base-cache.strategy';
 import { RedisService } from '@services/redis.service';
 import { Product } from '@module/product/entity/product.entity';
 import { Variant } from '@module/variant/entity/variant.entity';
@@ -11,6 +10,7 @@ import {
   invalidateProductListCache,
 } from '@module/product/helper/product-cache.utils';
 import { ICacheConfig } from '@cache/cache.service';
+import { BaseCacheStrategy } from '@cache/strategies/base-cache.strategy';
 
 export class ProductCacheService extends BaseCacheStrategy<Product> {
   constructor(redisService: RedisService, config?: Partial<ICacheConfig>) {

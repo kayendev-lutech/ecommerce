@@ -1,16 +1,15 @@
 import { AppDataSource } from '@config/typeorm.config';
 import { Product } from '@module/product/entity/product.entity';
 import { ListProductReqDto } from '../dto/list-product-req.dto';
+import { Repository } from 'typeorm';
 
-export class ProductRepository {
-  private repo = AppDataSource.getRepository(Product);
-
-  get repository() {
-    return this.repo;
+export class ProductRepository extends Repository<Product> {
+  constructor() {
+    super(Product, AppDataSource.manager);
   }
 
   async findAll(): Promise<Product[]> {
-    return this.repo.find();
+    return this.find();
   }
   async findWithPagination(params: ListProductReqDto): Promise<{ data: Product[]; total: number }> {
     const {
@@ -22,12 +21,12 @@ export class ProductRepository {
       ...filters
     } = params;
 
-    const qb = this.repo.createQueryBuilder('product');
+    const qb = this.createQueryBuilder('product');
 
     // qb.leftJoinAndSelect('product.variants', 'variants')
     // .leftJoinAndSelect('product.attributeValues', 'attributeValues')
     // .leftJoinAndSelect('attributeValues.attribute', 'attribute');
-    
+
     if (search?.trim()) {
       qb.andWhere('product.name LIKE :search', { search: `%${search.trim()}%` });
     }
@@ -51,25 +50,52 @@ export class ProductRepository {
     return { data, total };
   }
   async findById(id: number): Promise<Product | null> {
-    return this.repo.findOne({ where: { id } });
+    return this.findOne({ where: { id } });
+  }
+  async findDetailById(id: number): Promise<Product | null> {
+    return this.createQueryBuilder('product')
+      .leftJoinAndSelect('product.variants', 'variant')
+      .leftJoinAndSelect('product.attributeValues', 'attributeValue')
+      .leftJoinAndSelect('variant.attributeValues', 'variantAttributeValue')
+      .leftJoinAndSelect('variantAttributeValue.categoryAttribute', 'variantAttr')
+      .leftJoinAndSelect('variantAttributeValue.categoryAttributeOption', 'variantAttrOption')
+      .leftJoinAndSelect('attributeValue.categoryAttribute', 'attr')
+      .select([
+        'product.id',
+        'product.name',
+        'product.slug',
+        'product.price',
+        'product.currency_code',
+        'product.image_url',
+        'product.is_active',
+        'product.is_visible',
+        'variant.id',
+        'variant.name',
+        'variant.price',
+        'variant.sku',
+        'variant.is_active',
+        'variant.is_default',
+      ])
+      .where('product.id = :id', { id })
+      .getOne();
   }
   async findBySlug(slug: string): Promise<Product | null> {
-    return this.repo.findOne({ where: { slug } });
+    return this.findOne({ where: { slug } });
   }
   async findByCategoryId(category_id: number): Promise<Product | null> {
-    return this.repo.findOne({ where: { category_id } });
+    return this.findOne({ where: { category_id } });
   }
   async createProduct(data: Partial<Product>): Promise<Product> {
-    const product = this.repo.create(data);
-    return this.repo.save(product);
+    const product = this.create(data);
+    return this.save(product);
   }
 
   async updateProduct(id: number, data: Partial<Product>): Promise<Product | null> {
-    await this.repo.update({ id }, data);
+    await this.update({ id }, data);
     return this.findById(id);
   }
 
   async deleteProduct(id: number): Promise<void> {
-    await this.repo.delete({ id });
+    await this.delete({ id });
   }
 }

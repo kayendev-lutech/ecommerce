@@ -159,10 +159,10 @@ export const seedProducts = async () => {
   console.log('✅ Seeded products successfully');
 };
 
-AppDataSource.initialize()
-  .then(() => seedProducts())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('❌ Seeding products failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedProducts())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     console.error('❌ Seeding products failed', err);
+//     process.exit(1);
+//   });

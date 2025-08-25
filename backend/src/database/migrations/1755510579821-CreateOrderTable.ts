@@ -1,27 +1,21 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateOrdersTable1755510579821 implements MigrationInterface {
   name = 'CreateOrdersTable1755510579821';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TYPE "public"."orders_status_enum" AS ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded')
-    `);
-    await queryRunner.query(`
-      CREATE TYPE "public"."orders_payment_status_enum" AS ENUM('pending', 'paid', 'failed', 'refunded', 'partial_refund')
-    `);
-    await queryRunner.query(`
       CREATE TABLE "orders" (
         "id" SERIAL NOT NULL,
-        "user_id" INTEGER, -- Thêm dòng này
+        "user_id" INTEGER,
         "order_number" VARCHAR(50) NOT NULL UNIQUE,
         "customer_name" VARCHAR(100) NOT NULL,
         "customer_email" VARCHAR(255) NOT NULL,
         "customer_phone" VARCHAR(20),
         "shipping_address" TEXT NOT NULL,
         "billing_address" TEXT,
-        "status" "public"."orders_status_enum" NOT NULL DEFAULT 'pending',
-        "payment_status" "public"."orders_payment_status_enum" NOT NULL DEFAULT 'pending',
+        "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
+        "payment_status" VARCHAR(20) NOT NULL DEFAULT 'pending',
         "payment_method" VARCHAR(50),
         "subtotal" DECIMAL(10,2) NOT NULL DEFAULT 0,
         "tax_amount" DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -39,13 +33,17 @@ export class CreateOrdersTable1755510579821 implements MigrationInterface {
         CONSTRAINT "PK_orders_id" PRIMARY KEY ("id")
       )
     `);
+
     await queryRunner.query(`
       ALTER TABLE "orders"
       ADD CONSTRAINT "FK_orders_user_id" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE
     `);
+
     await queryRunner.query(`CREATE INDEX "IDX_orders_order_number" ON "orders" ("order_number")`);
     await queryRunner.query(`CREATE INDEX "IDX_orders_status" ON "orders" ("status")`);
-    await queryRunner.query(`CREATE INDEX "IDX_orders_payment_status" ON "orders" ("payment_status")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_orders_payment_status" ON "orders" ("payment_status")`,
+    );
     await queryRunner.query(`CREATE INDEX "IDX_orders_created_at" ON "orders" ("created_at")`);
     await queryRunner.query(`CREATE INDEX "IDX_orders_user_id" ON "orders" ("user_id")`);
   }
@@ -58,7 +56,5 @@ export class CreateOrdersTable1755510579821 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_orders_status"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_orders_order_number"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "orders"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "public"."orders_payment_status_enum"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "public"."orders_status_enum"`);
   }
 }

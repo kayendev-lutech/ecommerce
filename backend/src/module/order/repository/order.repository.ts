@@ -1,13 +1,15 @@
 import { AppDataSource } from '@config/typeorm.config';
 import { Order } from '../entity/order.entity';
 import { ListOrderReqDto } from '../dto/list-order-req.dto';
+import { Repository } from 'typeorm';
 
-export class OrderRepository {
-  private repo = AppDataSource.getRepository(Order);
-
+export class OrderRepository extends Repository<Order> {
+  constructor() {
+    super(Order, AppDataSource.manager);
+  }
   async findWithPagination(params: ListOrderReqDto): Promise<{ data: Order[]; total: number }> {
     const { page = 1, limit = 10, order = 'DESC', sortBy = 'created_at', ...filters } = params;
-    const qb = this.repo.createQueryBuilder('order');
+    const qb = this.createQueryBuilder('order');
 
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -24,29 +26,29 @@ export class OrderRepository {
   }
 
   async findById(id: number): Promise<Order | null> {
-    return this.repo.findOne({ where: { id }, relations: ['items'] });
+    return this.findOne({ where: { id }, relations: ['items'] });
   }
 
   async findByOrderNumber(order_number: string): Promise<Order | null> {
-    return this.repo.findOne({ where: { order_number }, relations: ['items'] });
+    return this.findOne({ where: { order_number }, relations: ['items'] });
   }
 
   async createOrder(data: Partial<Order>): Promise<Order> {
-    const order = this.repo.create(data);
-    return this.repo.save(order);
+    const order = this.create(data);
+    return this.save(order);
   }
 
-  async update(id: number, data: Partial<Order>): Promise<Order | null> {
-    await this.repo.update({ id }, data);
+  async updateOrder(id: number, data: Partial<Order>): Promise<Order | null> {
+    await this.update({ id }, data);
     return this.findById(id);
   }
 
-  async delete(id: number): Promise<void> {
-    await this.repo.delete({ id });
+  async deleteOrder(id: number): Promise<void> {
+    await this.delete({ id });
   }
 
   async getMonthlyOrderCount(year: number, month: number): Promise<number> {
-    const qb = this.repo.createQueryBuilder('order')
+    const qb = this.createQueryBuilder('order')
       .where('EXTRACT(YEAR FROM order.created_at) = :year', { year })
       .andWhere('EXTRACT(MONTH FROM order.created_at) = :month', { month });
     return qb.getCount();

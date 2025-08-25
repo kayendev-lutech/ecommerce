@@ -1,15 +1,15 @@
 import { RedisService } from '@services/redis.service';
-import { ProductCacheStrategy } from '@cache/strategies/product-cache-strategy';
-import { ICacheConfig } from '@cache/interfaces/cache-strategy.interface';
+import { ProductCacheService } from '@cache/strategies/product-cache-strategy';
+import { ICacheConfig } from '@cache/cache.service';
 
 export class CacheManager {
   private static instance: CacheManager;
   private redisService: RedisService;
-  private productCache: ProductCacheStrategy;
+  private productCache: ProductCacheService;
 
   private constructor() {
     this.redisService = new RedisService();
-    this.productCache = new ProductCacheStrategy(this.redisService);
+    this.productCache = new ProductCacheService(this.redisService);
   }
 
   public static getInstance(): CacheManager {
@@ -19,12 +19,12 @@ export class CacheManager {
     return CacheManager.instance;
   }
 
-  public getProductCache(): ProductCacheStrategy {
+  public getProductCache(): ProductCacheService {
     return this.productCache;
   }
 
-  public createProductCache(config?: Partial<ICacheConfig>): ProductCacheStrategy {
-    return new ProductCacheStrategy(this.redisService, config);
+  public createProductCache(config?: Partial<ICacheConfig>): ProductCacheService {
+    return new ProductCacheService(this.redisService, config);
   }
 
   // Health check for cache services

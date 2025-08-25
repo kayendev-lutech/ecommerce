@@ -25,10 +25,10 @@ export const seedOrderItems = async () => {
     {
       order_id: orders[0].id,
       product_id: products[0].id,
-      variant_id: variants.find(v => v.product_id === products[0].id)?.id,
+      variant_id: variants.find((v) => v.product_id === products[0].id)?.id,
       product_name: products[0].name,
-      variant_name: variants.find(v => v.product_id === products[0].id)?.name || 'Default',
-      sku: variants.find(v => v.product_id === products[0].id)?.sku || 'DEFAULT-001',
+      variant_name: variants.find((v) => v.product_id === products[0].id)?.name || 'Default',
+      sku: variants.find((v) => v.product_id === products[0].id)?.sku || 'DEFAULT-001',
       quantity: 1,
       unit_price: 100000,
       total_price: 100000,
@@ -38,10 +38,10 @@ export const seedOrderItems = async () => {
     {
       order_id: orders[1].id,
       product_id: products[1].id,
-      variant_id: variants.find(v => v.product_id === products[1].id)?.id,
+      variant_id: variants.find((v) => v.product_id === products[1].id)?.id,
       product_name: products[1].name,
-      variant_name: variants.find(v => v.product_id === products[1].id)?.name || 'Default',
-      sku: variants.find(v => v.product_id === products[1].id)?.sku || 'DEFAULT-002',
+      variant_name: variants.find((v) => v.product_id === products[1].id)?.name || 'Default',
+      sku: variants.find((v) => v.product_id === products[1].id)?.sku || 'DEFAULT-002',
       quantity: 2,
       unit_price: 150000,
       total_price: 300000,
@@ -51,10 +51,10 @@ export const seedOrderItems = async () => {
     {
       order_id: orders[2].id,
       product_id: products[2].id,
-      variant_id: variants.find(v => v.product_id === products[2].id)?.id,
+      variant_id: variants.find((v) => v.product_id === products[2].id)?.id,
       product_name: products[2].name,
-      variant_name: variants.find(v => v.product_id === products[2].id)?.name || 'Default',
-      sku: variants.find(v => v.product_id === products[2].id)?.sku || 'DEFAULT-003',
+      variant_name: variants.find((v) => v.product_id === products[2].id)?.name || 'Default',
+      sku: variants.find((v) => v.product_id === products[2].id)?.sku || 'DEFAULT-003',
       quantity: 1,
       unit_price: 200000,
       total_price: 200000,
@@ -75,15 +75,17 @@ export const seedOrderItems = async () => {
       await orderItemRepo.save(orderItemRepo.create(item));
       logger.info(`Seeded order item for order ${item.order_id} - product ${item.product_id}`);
     } else {
-      logger.info(`Order item for order ${item.order_id} - product ${item.product_id} already exists, skipping`);
+      logger.info(
+        `Order item for order ${item.order_id} - product ${item.product_id} already exists, skipping`,
+      );
     }
   }
 };
 
-AppDataSource.initialize()
-  .then(() => seedOrderItems())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    logger.error('❌ Seeding order items failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedOrderItems())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     logger.error('❌ Seeding order items failed', err);
+//     process.exit(1);
+//   });

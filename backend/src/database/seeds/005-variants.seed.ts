@@ -42,10 +42,10 @@ export const seedVariants = async () => {
   console.log('Seeded variants successfully');
 };
 
-AppDataSource.initialize()
-  .then(() => seedVariants())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Seeding variants failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedVariants())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     console.error('Seeding variants failed', err);
+//     process.exit(1);
+//   });

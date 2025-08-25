@@ -1,6 +1,6 @@
 import { RedisService } from '@services/redis.service';
 import { logger } from '@logger/logger';
-import { ICacheStrategy, ICacheConfig } from '@cache/interfaces/cache-strategy.interface';
+import { ICacheConfig, ICacheStrategy } from '@cache/cache.service';
 
 export abstract class BaseCacheStrategy<T> implements ICacheStrategy<T> {
   protected redisService: RedisService;
@@ -37,7 +37,7 @@ export abstract class BaseCacheStrategy<T> implements ICacheStrategy<T> {
   protected async safeDel(key: string | string[]): Promise<void> {
     try {
       if (Array.isArray(key)) {
-        await Promise.allSettled(key.map(k => this.redisService.del(k)));
+        await Promise.allSettled(key.map((k) => this.redisService.del(k)));
       } else {
         await this.redisService.del(key);
       }

@@ -3,14 +3,12 @@ import { Variant } from '@module/variant/entity/variant.entity';
 import { ListVariantReqDto } from '../dto/list-variant-req.dto';
 import { buildPaginator } from '@utils/cursor-pagination';
 import { CreateVariantDto } from '../dto/create-variant.dto';
+import { Repository } from 'typeorm';
 
-export class VariantRepository {
-  private repo = AppDataSource.getRepository(Variant);
-
-  get repository() {
-    return this.repo;
+export class VariantRepository extends Repository<Variant> {
+  constructor() {
+    super(Variant, AppDataSource.manager);
   }
-
   async findWithPagination(params: ListVariantReqDto): Promise<{ data: Variant[]; total: number }> {
     const {
       limit = 10,
@@ -23,7 +21,7 @@ export class VariantRepository {
       is_default,
     } = params;
 
-    const qb = this.repo.createQueryBuilder('variant');
+    const qb = this.createQueryBuilder('variant');
 
     if (product_id !== undefined && product_id !== null) {
       qb.andWhere('variant.product_id = :product_id', { product_id });
@@ -61,33 +59,33 @@ export class VariantRepository {
   }
 
   async findById(id: number): Promise<Variant | null> {
-    return this.repo.findOne({ where: { id: id } });
+    return this.findOne({ where: { id: id } });
   }
   async findByProductId(product_id: number): Promise<Variant[]> {
-    return this.repo.find({ where: { product_id: product_id } });
+    return this.find({ where: { product_id: product_id } });
   }
   async createVariant(data: CreateVariantDto): Promise<Variant> {
-    const variant = this.repo.create(data);
-    return this.repo.save(variant);
+    const variant = this.create(data);
+    return this.save(variant);
   }
   async findByNameAndProductId(name: string, product_id: number): Promise<Variant | null> {
-    return this.repo.findOne({ where: { name, product_id: product_id } });
+    return this.findOne({ where: { name, product_id: product_id } });
   }
   async updateVariant(id: number, data: Partial<Variant>): Promise<Variant | null> {
-    await this.repo.update({ id: id }, data);
+    await this.update({ id: id }, data);
     return this.findById(id);
   }
 
   async deleteVariant(id: number): Promise<void> {
-    await this.repo.delete(id);
+    await this.delete(id);
   }
 
   async findBySku(sku: string): Promise<Variant | null> {
-    return this.repo.findOne({ where: { sku } });
+    return this.findOne({ where: { sku } });
   }
   async findManyBySkus(skus: string[]): Promise<Variant[]> {
     if (!skus.length) return [];
-    return await this.repo.find({
+    return await this.find({
       where: skus.map((sku) => ({ sku })),
     });
   }

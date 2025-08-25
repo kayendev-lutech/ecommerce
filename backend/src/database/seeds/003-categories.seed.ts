@@ -19,10 +19,10 @@ export const seedCategories = async () => {
   console.log('Seeded categories successfully');
 };
 
-AppDataSource.initialize()
-  .then(() => seedCategories())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Seeding categories failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedCategories())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     console.error('Seeding categories failed', err);
+//     process.exit(1);
+//   });

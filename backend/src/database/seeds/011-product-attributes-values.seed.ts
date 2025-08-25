@@ -34,80 +34,84 @@ export const seedProductAttributeValues = async () => {
     {
       productSlug: 'iphone-14',
       values: {
-        'color': 'black',
-        'storage': '128gb',
-        'brand': 'Apple',
-        'weight': '0.172',
-        'warranty_months': '12',
-        'is_waterproof': 'true',
-        'screen_size': '6.1',
-        'connectivity': 'Lightning',
-      }
+        color: 'black',
+        storage: '128gb',
+        brand: 'Apple',
+        weight: '0.172',
+        warranty_months: '12',
+        is_waterproof: 'true',
+        screen_size: '6.1',
+        connectivity: 'Lightning',
+      },
     },
     // MacBook Air M2 attributes
     {
       productSlug: 'macbook-air-m2',
       values: {
-        'color': 'gray',
-        'storage': '256gb',
-        'brand': 'Apple',
-        'weight': '1.24',
-        'warranty_months': '12',
-        'screen_size': '13.6',
-        'connectivity': 'USB-C',
-      }
+        color: 'gray',
+        storage: '256gb',
+        brand: 'Apple',
+        weight: '1.24',
+        warranty_months: '12',
+        screen_size: '13.6',
+        connectivity: 'USB-C',
+      },
     },
     // Samsung Galaxy S23 attributes
     {
       productSlug: 'samsung-galaxy-s23',
       values: {
-        'color': 'white',
-        'storage': '256gb',
-        'brand': 'Samsung',
-        'weight': '0.168',
-        'warranty_months': '24',
-        'is_waterproof': 'true',
-        'screen_size': '6.1',
-        'connectivity': 'USB-C',
-      }
+        color: 'white',
+        storage: '256gb',
+        brand: 'Samsung',
+        weight: '0.168',
+        warranty_months: '24',
+        is_waterproof: 'true',
+        screen_size: '6.1',
+        connectivity: 'USB-C',
+      },
     },
     // Sony WH-1000XM5 attributes
     {
       productSlug: 'sony-wh-1000xm5',
       values: {
-        'color': 'black',
-        'brand': 'Sony',
-        'weight': '0.25',
-        'warranty_months': '12',
-        'connectivity': 'Bluetooth',
-      }
+        color: 'black',
+        brand: 'Sony',
+        weight: '0.25',
+        warranty_months: '12',
+        connectivity: 'Bluetooth',
+      },
     },
     // iPad Pro 12.9 attributes
     {
       productSlug: 'ipad-pro-12-9',
       values: {
-        'color': 'gray',
-        'storage': '128gb',
-        'brand': 'Apple',
-        'weight': '0.682',
-        'warranty_months': '12',
-        'screen_size': '12.9',
-        'connectivity': 'USB-C',
-      }
+        color: 'gray',
+        storage: '128gb',
+        brand: 'Apple',
+        weight: '0.682',
+        warranty_months: '12',
+        screen_size: '12.9',
+        connectivity: 'USB-C',
+      },
     },
   ];
 
   for (const sampleValue of sampleValues) {
-    const product = products.find(p => p.slug === sampleValue.productSlug);
+    const product = products.find((p) => p.slug === sampleValue.productSlug);
     if (!product) {
       logger.warn(`Product with slug ${sampleValue.productSlug} not found, skipping`);
       continue;
     }
 
     for (const [attributeName, value] of Object.entries(sampleValue.values)) {
-      const attribute = attributes.find(a => a.name === attributeName && a.category_id === product.category_id);
+      const attribute = attributes.find(
+        (a) => a.name === attributeName && a.category_id === product.category_id,
+      );
       if (!attribute) {
-        logger.warn(`Attribute ${attributeName} not found for category ${product.category_id}, skipping`);
+        logger.warn(
+          `Attribute ${attributeName} not found for category ${product.category_id}, skipping`,
+        );
         continue;
       }
 
@@ -117,7 +121,9 @@ export const seedProductAttributeValues = async () => {
 
       if (attribute.type === 'enum') {
         const option = options.find(
-          o => o.category_attribute_id === attribute.id && o.option_value === value.toString().toLowerCase()
+          (o) =>
+            o.category_attribute_id === attribute.id &&
+            o.option_value === value.toString().toLowerCase(),
         );
         if (!option) {
           logger.warn(`Option ${value} for attribute ${attributeName} not found, skipping`);
@@ -132,7 +138,7 @@ export const seedProductAttributeValues = async () => {
         where: {
           product_id: product.id,
           category_attribute_id: attribute.id,
-        }
+        },
       });
 
       if (!existing) {
@@ -152,25 +158,25 @@ export const seedProductAttributeValues = async () => {
   }
 
   // Add some random values for remaining products
-  const remainingProducts = products.filter(p =>
-    !sampleValues.some(sv => sv.productSlug === p.slug)
+  const remainingProducts = products.filter(
+    (p) => !sampleValues.some((sv) => sv.productSlug === p.slug),
   );
 
-  const colorAttrs = attributes.filter(a => a.name === 'color');
-  const brandAttrs = attributes.filter(a => a.name === 'brand');
-  const warrantyAttrs = attributes.filter(a => a.name === 'warranty_months');
+  const colorAttrs = attributes.filter((a) => a.name === 'color');
+  const brandAttrs = attributes.filter((a) => a.name === 'brand');
+  const warrantyAttrs = attributes.filter((a) => a.name === 'warranty_months');
 
   for (const product of remainingProducts.slice(0, 10)) {
     // Lấy attribute đúng category
-    const colorAttr = colorAttrs.find(a => a.category_id === product.category_id);
-    const brandAttr = brandAttrs.find(a => a.category_id === product.category_id);
-    const warrantyAttr = warrantyAttrs.find(a => a.category_id === product.category_id);
+    const colorAttr = colorAttrs.find((a) => a.category_id === product.category_id);
+    const brandAttr = brandAttrs.find((a) => a.category_id === product.category_id);
+    const warrantyAttr = warrantyAttrs.find((a) => a.category_id === product.category_id);
 
     // Add basic attributes for remaining products
     const basicAttributes = [
       {
         attr: colorAttr,
-        value: ['black', 'white', 'gray'][Math.floor(Math.random() * 3)]
+        value: ['black', 'white', 'gray'][Math.floor(Math.random() * 3)],
       },
       { attr: brandAttr, value: 'Generic' },
       { attr: warrantyAttr, value: '12' },
@@ -184,7 +190,9 @@ export const seedProductAttributeValues = async () => {
 
       if (attr.type === 'enum') {
         const option = options.find(
-          o => o.category_attribute_id === attr.id && o.option_value === value.toString().toLowerCase()
+          (o) =>
+            o.category_attribute_id === attr.id &&
+            o.option_value === value.toString().toLowerCase(),
         );
         if (!option) {
           logger.warn(`Option ${value} for attribute ${attr.name} not found, skipping`);
@@ -199,7 +207,7 @@ export const seedProductAttributeValues = async () => {
         where: {
           product_id: product.id,
           category_attribute_id: attr.id,
-        }
+        },
       });
 
       if (!existing) {
@@ -220,12 +228,12 @@ export const seedProductAttributeValues = async () => {
 };
 
 // Run if called directly
-if (require.main === module) {
-  AppDataSource.initialize()
-    .then(() => seedProductAttributeValues())
-    .then(() => process.exit(0))
-    .catch((err) => {
-      logger.error('❌ Seeding product attribute values failed', err);
-      process.exit(1);
-    });
-}
+// if (require.main === module) {
+//   AppDataSource.initialize()
+//     .then(() => seedProductAttributeValues())
+//     .then(() => process.exit(0))
+//     .catch((err) => {
+//       logger.error('❌ Seeding product attribute values failed', err);
+//       process.exit(1);
+//     });
+// }

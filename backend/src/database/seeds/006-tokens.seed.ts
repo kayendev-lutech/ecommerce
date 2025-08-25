@@ -25,10 +25,10 @@ export const seedTokens = async () => {
   console.log('Seeded tokens successfully');
 };
 
-AppDataSource.initialize()
-  .then(() => seedTokens())
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Seeding tokens failed', err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => seedTokens())
+//   .then(() => process.exit(0))
+//   .catch((err) => {
+//     console.error('Seeding tokens failed', err);
+//     process.exit(1);
+//   });
